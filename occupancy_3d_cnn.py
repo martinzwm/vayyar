@@ -7,7 +7,7 @@ import pickle
 
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.preprocessing import MultiLabelBinarizer, StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
@@ -23,6 +23,8 @@ from models import CNNModel
 # %%
 x = loadData("/Users/jameshe/Documents/radar_ura/vayyar/x.pickle")
 y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/y.pickle")
+scaler = StandardScaler().fit(x)
+x = scaler.transform(x)
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
 
 x_train = torch.from_numpy(x_train).float()
@@ -36,14 +38,15 @@ train = torch.utils.data.TensorDataset(x_train,y_train)
 test = torch.utils.data.TensorDataset(x_test,y_test)
 
 # data loader
-train_loader = torch.utils.data.DataLoader(train, batch_size = 2, shuffle = True)
-test_loader = torch.utils.data.DataLoader(test, batch_size = 2, shuffle = True)
+train_loader = torch.utils.data.DataLoader(train, batch_size = batch_size, shuffle = True)
+test_loader = torch.utils.data.DataLoader(test, batch_size = batch_size, shuffle = True)
 #%%
 #Definition of hyperparameters
 num_classes = 5
 num_epochs = 8
 # Create CNN
 model = CNNModel(num_classes)
+model.train()
 #model.cuda()
 print(model)
 
