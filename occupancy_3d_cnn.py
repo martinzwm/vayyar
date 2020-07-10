@@ -36,8 +36,8 @@ train = torch.utils.data.TensorDataset(x_train,y_train)
 test = torch.utils.data.TensorDataset(x_test,y_test)
 
 # data loader
-train_loader = torch.utils.data.DataLoader(train, batch_size = batch_size, shuffle = True)
-test_loader = torch.utils.data.DataLoader(test, batch_size = batch_size, shuffle = True)
+train_loader = torch.utils.data.DataLoader(train, batch_size = 2, shuffle = True)
+test_loader = torch.utils.data.DataLoader(test, batch_size = 2, shuffle = True)
 #%%
 #Definition of hyperparameters
 num_classes = 5
@@ -73,68 +73,28 @@ for epoch in range(num_epochs):
         loss_list.append(loss.data)
         iteration_count += 1
         print(f'Epoch {epoch + 1} Iteration {iteration_count}: loss = {loss.data}')
-#%%
 torch.save(model.state_dict(), "/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt")
-#%%
+
+# %%
+model = CNNModel(5)
+model.load_state_dict(torch.load("/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt"))
+model.eval()
+
 predictions = []
 complete_labels = []
 for images, labels in train_loader:
     train = Variable(images.view(len(images), 1, 29 ,29 ,64))
     outputs = model(train)
-    outputs[outputs <= 0.5] = 0
+    outputs[outputs < 0.5] = 0
     outputs[outputs > 0.5] = 1
     predictions.append(outputs)
     complete_labels.append(labels)
-    print(f'Iterating')
-print("done iterating")
 from sklearn.metrics import classification_report
 from sklearn.metrics import multilabel_confusion_matrix
-cfm = multilabel_confusion_matrix(complete_labels, predictions)
-report = classification_report(complete_labels, predictions)
+cfm = multilabel_confusion_matrix(complete_labels[0].detach().numpy(), predictions[0].detach().numpy())
+report = classification_report(complete_labels[0].detach().numpy(), predictions[0].detach().numpy())
 print(cfm)
 print(report)
-#%%
-        count += 1
-        #32 batches
-        if count % 32 == 0:
-            # Calculate Accuracy         
-            correct = 0
-            total = 0
-            # Iterate through test dataset
-            for images, labels in test_loader:
-                
-                test = Variable(images.view(len(images), 1, 29, 29 ,64))
-                # Forward propagation
-                outputs = model(test)
-                # Get predictions from the maximum value
-                predicted = outputs
-                predicted[predicted < 0.5] = 0
-                predicted[predicted > 0.5] = 1
-               
-                # Total number of labels
-                total += (len(labels) * num_classes)
-                correct += (predicted == labels).sum().item()
 
-            accuracy = 100 * correct / float(total)
-            # store loss and iteration
-            loss_list.append(loss.data)
-            iteration_list.append(count)
-            accuracy_list.append(accuracy)
-            # Print Loss
-            print('Iteration: {}  Loss: {}  Accuracy: {} %'.format(count, loss.data, accuracy))
-
-# %%
-print(report)
-
-# %%
-print(model)
-
-# %%
-torch.save(model.state_dict(), "/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model_2.pt")
-
-# %%
-model = CNNModel()
-model.load_state_dict(torch.load("/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt"))
-model.eval()
 
 # %%
