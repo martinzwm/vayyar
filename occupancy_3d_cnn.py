@@ -23,8 +23,17 @@ from models import CNNModel
 # %%
 x = loadData("/Users/jameshe/Documents/radar_ura/vayyar/x.pickle")
 y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/y.pickle")
-scaler = StandardScaler().fit(x)
+print(x.shape)
+x_shape_dim0 = x.shape[0]
+x_shape_dim1 = x.shape[1]
+x_shape_dim2 = x.shape[2]
+x_shape_dim3 = x.shape[3]
+x = np.reshape(x, (x_shape_dim0, x_shape_dim1 * x_shape_dim2 * x_shape_dim3))
+scaler = StandardScaler()
+scaler.fit(x)
 x = scaler.transform(x)
+x = np.reshape(x, (x_shape_dim0, x_shape_dim1, x_shape_dim2, x_shape_dim3))
+#%%
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
 
 x_train = torch.from_numpy(x_train).float()
