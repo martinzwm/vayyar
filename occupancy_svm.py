@@ -17,8 +17,9 @@ from sklearn.metrics import classification_report, confusion_matrix, multilabel_
 import seaborn
 from sklearn.model_selection import cross_val_score
 import pickle
-
-
+from utilities import importDataFromMatFiles, importDataOccupancyType
+#%%
+x, y = importDataOccupancyType("/Users/jameshe/Documents/radar_ura/vayyar/FirstBatch")
 
 # %%
 X = loadData("/Users/jameshe/Documents/radar_ura/vayyar/x.pickle")
