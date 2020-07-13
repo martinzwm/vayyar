@@ -17,13 +17,15 @@ from sklearn.metrics import classification_report, confusion_matrix, multilabel_
 import seaborn
 from sklearn.model_selection import cross_val_score
 import pickle
-from utilities import importDataFromMatFiles, importDataOccupancyType
+from utilities import importDataFromMatFiles, importDataOccupancyType, saveData, loadData
 #%%
 x, y = importDataOccupancyType("/Users/jameshe/Documents/radar_ura/vayyar/FirstBatch")
+saveData(y, "/Users/jameshe/Documents/radar_ura/vayyar/processed_data/y_10_class.pickle")
+saveData(x, "/Users/jameshe/Documents/radar_ura/vayyar/processed_data/x_10_class.pickle")
 
 # %%
-X = loadData("/Users/jameshe/Documents/radar_ura/vayyar/x.pickle")
-Y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/y.pickle")
+X = loadData("/Users/jameshe/Documents/radar_ura/vayyar/processed_data/x_10_class.pickle")
+Y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/processed_data/y_10_class.pickle")
 print(X.shape)
 print(Y.shape)
 X = np.reshape(X, (X.shape[0],X.shape[1] * X.shape[2] * X.shape[3]))
@@ -63,21 +65,5 @@ y_pred = clf.predict(X_test)
 AC = clf.score(X_test,y_test)
 report = classification_report(y_test, y_pred)
 cm=multilabel_confusion_matrix(y_test,y_pred)
-print('report',AC)
-df_cm = pd.DataFrame(cm, range(8),range(8))
-sn.set(font_scale=1.4)#for label size
-sn.heatmap(df_cm, annot=True,annot_kws={"size": 16})# font size
-plt.show()
-matrix_proportions =  np.zeros((8,8))
-for i in range(0,8):
-        matrix_proportions[i,:] = cm[i,:]/float(cm[i,:].sum())
-        names=['S0', 'S1', 'S2' , 'S3', 'S4' 'S7', 'S6', 'S7']
-        Conf = pd.DataFrame(matrix_proportions, index=names,columns=names)
-
-seaborn.heatmap(Conf, annot=True, annot_kws={"size": 10}, cmap='gist_gray_r', cbar=False, square=True, fmt='.2f')
-plt.ylabel(r'True Categories',fontsize=10)
-plt.xlabel(r'Predicted Categories',fontsize=10)
-plt.tick_params(labelsize=10)
-plt.show()
-print(Conf)
-
+print(report)
+print(cm)

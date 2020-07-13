@@ -38,13 +38,12 @@ def _todict(matobj):
             dict[strg] = elem
     return dict
 
-def saveData(data, path, fileName):
+def saveData(data, path):
     """
     open file mode w: write, if the file exist, erase it
     open file mode b: open the file as a binary file
     """
-    filePath = os.path.join(path, fileName)
-    with open(filePath,'wb') as pickleFileHandle:
+    with open(path,'wb') as pickleFileHandle:
         pickle.dump(data, pickleFileHandle)
         pickleFileHandle.close()
 
@@ -107,7 +106,6 @@ def importDataOccupancyType(rootDir):
                     imagePower[~ (maskG & maskT)] = 0
                     xList.append(imagePower)
                     yLabel = makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel)
-                    print(f'{occupancyLabel}, {occupancyTypeLabel}, {yLabel}')
                     yList.append(yLabel)
     xList = np.array(xList)
     yList = np.array(yList)
