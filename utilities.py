@@ -3,8 +3,9 @@ import pickle
 import numpy as np
 import os
 import json
-from sklearn.preprocessing import MultiLabelBinarizer
-#%%
+from sklearn.preprocessing import MultiLabelBinarizer, LabelEncoder
+from sklearn.metrics import confusion_matrix
+
 def loadmat(filename):
     '''
     this function should be called instead of direct spio.loadmat
@@ -107,6 +108,7 @@ def importDataOccupancyType(rootDir):
                     xList.append(imagePower)
                     yLabel = makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel)
                     yList.append(yLabel)
+                    # print(f'{occupancyLabel}, {occupancyTypeLabel}')
     xList = np.array(xList)
     yList = np.array(yList)
     return xList, yList
@@ -127,3 +129,31 @@ def makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel):
         else:
             label.extend([0,0])
     return label
+
+def transformLabels(tenClassLabels):
+    """
+    tenClassLables: n x 10 label
+    return: a tuple of five element, (n x 3 for seat one, n x 3 for seat two, ..., n x 3 for seat five)
+            first element for empty, second element for adult, the third element for children 
+    """
+    tenClassLabels = tenClassLabels.astype('str')
+    seat_1_label = [''.join(row) for row in tenClassLabels[:,0:2]]
+    seat_2_label = [''.join(row) for row in tenClassLabels[:,2:4]]
+    seat_3_label = [''.join(row) for row in tenClassLabels[:,4:6]]
+    seat_4_label = [''.join(row) for row in tenClassLabels[:,6:8]]
+    seat_5_label = [''.join(row) for row in tenClassLabels[:,8:10]]
+    encoder = LabelEncoder()
+    encoder.fit(['00', '01', '10'])
+    seat_1_label = encoder.transform(seat_1_label)
+    seat_2_label = encoder.transform(seat_2_label)
+    seat_3_label = encoder.transform(seat_3_label)
+    seat_4_label = encoder.transform(seat_4_label)
+    seat_5_label = encoder.transform(seat_5_label)
+    return [seat_1_label, seat_2_label, seat_3_label, seat_4_label, seat_5_label]
+
+def getConfusionMatrices(prediction: list, truth):
+    confusionMatrices = list()
+    for i in range(5):
+        confusionMatrices.append(confusion_matrix(truth[i], prediction[i]))
+    return confusionMatrices
+

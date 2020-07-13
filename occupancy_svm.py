@@ -17,7 +17,7 @@ from sklearn.metrics import classification_report, confusion_matrix, multilabel_
 import seaborn
 from sklearn.model_selection import cross_val_score
 import pickle
-from utilities import importDataFromMatFiles, importDataOccupancyType, saveData, loadData
+from utilities import importDataFromMatFiles, importDataOccupancyType, saveData, loadData, transformLabels, getConfusionMatrices
 #%%
 x, y = importDataOccupancyType("/Users/jameshe/Documents/radar_ura/vayyar/FirstBatch")
 saveData(y, "/Users/jameshe/Documents/radar_ura/vayyar/processed_data/y_10_class.pickle")
@@ -26,7 +26,8 @@ saveData(x, "/Users/jameshe/Documents/radar_ura/vayyar/processed_data/x_10_class
 # %%
 X = loadData("/Users/jameshe/Documents/radar_ura/vayyar/processed_data/x_10_class.pickle")
 Y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/processed_data/y_10_class.pickle")
-print(X.shape)
+
+#%%print(X.shape)
 print(Y.shape)
 X = np.reshape(X, (X.shape[0],X.shape[1] * X.shape[2] * X.shape[3]))
 print('Xin',X.shape)
@@ -61,13 +62,13 @@ clf.fit(X_train, y_train)
 # %%
 y_pred = clf.predict(X_test)
 
-cm_seat_1 = confusion_matrix(y_test_1, y_pred_1)
-cm_seat_2 = confusion_matrix(y_test_2, y_pred_2)
-cm_seat_3 = confusion_matrix(y_test_3, y_pred_3)
-cm_seat_4 = confusion_matrix(y_test_4, y_pred_4)
-cm_seat_5 = confusion_matrix(y_test_5, y_pred_5)
+y_pred = transformLabels(y_pred)
+y_test = transformLabels(y_test)
 
-
+confusionMatrices = getConfusionMatrices(y_pred, y_test)
+#%%
+for i in range(5):
+        print(classification_report(y_test[i], y_pred[i]))
 # %%
 AC = clf.score(X_test,y_test)
 report = classification_report(y_test, y_pred)
