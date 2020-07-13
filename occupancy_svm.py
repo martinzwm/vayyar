@@ -61,6 +61,13 @@ clf.fit(X_train, y_train)
 # %%
 y_pred = clf.predict(X_test)
 
+cm_seat_1 = confusion_matrix(y_test_1, y_pred_1)
+cm_seat_2 = confusion_matrix(y_test_2, y_pred_2)
+cm_seat_3 = confusion_matrix(y_test_3, y_pred_3)
+cm_seat_4 = confusion_matrix(y_test_4, y_pred_4)
+cm_seat_5 = confusion_matrix(y_test_5, y_pred_5)
+
+
 # %%
 AC = clf.score(X_test,y_test)
 report = classification_report(y_test, y_pred)
