@@ -121,29 +121,33 @@ def makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel):
             index = occupancyLabel.index(item)
             occupancyType = occupancyTypeLabel[index]
             if occupancyType == 'ADT':
-                label.extend([0,1])
+                # label.extend([0,0])
+                label.extend([0,0,1])
             elif occupancyType == 'SCD' or occupancyType == 'MCD' or occupancyType == 'LCD' or occupancyType == 'IFT':
-                label.extend([1,0])
+                # label.extend([0,1])
+                label.extend([0,1,0])
             else:
-                label.extend([0,0])
+                # label.extend([1,0])
+                label.extend([1,0,0])
         else:
-            label.extend([0,0])
+            # label.extend([1,0])
+            label.extend([1,0,0])
     return label
-
-def transformLabels(tenClassLabels):
+#%%
+def seatWiseTransformLabels(fifteenClassLabels):
     """
-    tenClassLables: n x 10 label
+    tenClassLables: n x 15 label
     return: a tuple of five element, (n x 3 for seat one, n x 3 for seat two, ..., n x 3 for seat five)
             first element for empty, second element for adult, the third element for children 
     """
-    tenClassLabels = tenClassLabels.astype('str')
-    seat_1_label = [''.join(row) for row in tenClassLabels[:,0:2]]
-    seat_2_label = [''.join(row) for row in tenClassLabels[:,2:4]]
-    seat_3_label = [''.join(row) for row in tenClassLabels[:,4:6]]
-    seat_4_label = [''.join(row) for row in tenClassLabels[:,6:8]]
-    seat_5_label = [''.join(row) for row in tenClassLabels[:,8:10]]
+    fifteenClassLabels = fifteenClassLabels.astype('str')
+    seat_1_label = [''.join(row) for row in fifteenClassLabels[:,0:3]]
+    seat_2_label = [''.join(row) for row in fifteenClassLabels[:,3:6]]
+    seat_3_label = [''.join(row) for row in fifteenClassLabels[:,6:9]]
+    seat_4_label = [''.join(row) for row in fifteenClassLabels[:,9:12]]
+    seat_5_label = [''.join(row) for row in fifteenClassLabels[:,12:15]]
     encoder = LabelEncoder()
-    encoder.fit(['00', '01', '10'])
+    encoder.fit(['100', '010', '001'])
     seat_1_label = encoder.transform(seat_1_label)
     seat_2_label = encoder.transform(seat_2_label)
     seat_3_label = encoder.transform(seat_3_label)
@@ -151,9 +155,35 @@ def transformLabels(tenClassLabels):
     seat_5_label = encoder.transform(seat_5_label)
     return [seat_1_label, seat_2_label, seat_3_label, seat_4_label, seat_5_label]
 
+def scenarioWiseTransformLabels(fifteenClassLabels):
+    """
+    tenClassLables: n x 15 label
+    return: n x 1 labels, 
+    e.g. [0,0,1, 0,0,1, 1,0,0, 1,0,0, 0,1,0] -> [1,2,5]
+    """
+    result = list()
+    for label in fifteenClassLabels:
+        transform_str = ""
+        for i in range(0, int(label.shape[0]), 3):
+            if (list(label[i:i+3]) == [0,0,1]) or (list(label[i:i+3]) == [0,1,0]):
+                transform_str += str(int(i/3 + 1)) #people present, append seat number
+            elif (list(label[i:i+3]) == [1,0,0]):
+                transform_str += ""
+                pass
+            else:
+                transform_str += str(int(i/3 + 1))
+                transform_str += ("n/a")
+            transform_str += ","
+        result.append(transform_str[:-1])  
+    return result
+
+
 def getConfusionMatrices(prediction: list, truth):
     confusionMatrices = list()
     for i in range(5):
         confusionMatrices.append(confusion_matrix(truth[i], prediction[i]))
     return confusionMatrices
 
+
+
+# %%

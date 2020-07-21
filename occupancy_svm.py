@@ -17,7 +17,7 @@ from sklearn.metrics import classification_report, confusion_matrix, multilabel_
 import seaborn
 from sklearn.model_selection import cross_val_score
 import pickle
-from utilities import importDataFromMatFiles, importDataOccupancyType, saveData, loadData, transformLabels, getConfusionMatrices
+from utilities import importDataFromMatFiles, importDataOccupancyType, saveData, loadData, seatWiseTransformLabels, scenarioWiseTransformLabels, getConfusionMatrices
 #%%
 x, y = importDataOccupancyType("/Users/jameshe/Documents/radar_ura/vayyar/FirstBatch")
 saveData(y, "/Users/jameshe/Documents/radar_ura/vayyar/processed_data/y_10_class.pickle")
@@ -35,7 +35,7 @@ print(X.dtype)
 
 
 # %%
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.20)
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.05)
 # apply PCA to reduce the size
 # Fit on training set only.
 scaler = StandardScaler()
@@ -61,17 +61,47 @@ clf.fit(X_train, y_train)
 
 # %%
 y_pred = clf.predict(X_test)
+#%%
 
-y_pred = transformLabels(y_pred)
-y_test = transformLabels(y_test)
+y_pred_seat_result = np.array(seatWiseTransformLabels(y_pred))
+y_test_seat_result = np.array(seatWiseTransformLabels(y_test))
 
-confusionMatrices = getConfusionMatrices(y_pred, y_test)
+y_pred_scenario_result = scenarioWiseTransformLabels(y_pred)
+y_test_scenario_result = scenarioWiseTransformLabels(y_test)
+
+from sklearn.preprocessing import LabelEncoder
+
+encoder = LabelEncoder()
+encoder.fit(y_pred_scenario_result)
+y_pred_trans_result = encoder.transform(y_pred_scenario_result)
+y_test_trans_result = encoder.transform(y_test_scenario_result)
+
+
+#confusionMatrices = getConfusionMatrices(y_pred_result, y_test_result)
+# %%
+from sklearn.metrics import plot_confusion_matrix
+class_names = list(set(y_test_scenario_result + y_pred_scenario_result))
+titles_options = [("Confusion matrix, without normalization", None),
+                  ("Normalized confusion matrix", 'false')]
+for title, normalize in titles_options:
+    disp = plot_confusion_matrix(clf, X_test, y_test,
+                                 display_labels=class_names,
+                                 cmap=plt.cm.Blues)
+    disp.ax_.set_title(title)
+
+    print(title)
+    print(disp.confusion_matrix)
+
+plt.show()
+
 #%%
 for i in range(5):
         print(classification_report(y_test[i], y_pred[i]))
 # %%
-AC = clf.score(X_test,y_test)
 report = classification_report(y_test, y_pred)
 cm=multilabel_confusion_matrix(y_test,y_pred)
 print(report)
 print(cm)
+
+
+# %%
