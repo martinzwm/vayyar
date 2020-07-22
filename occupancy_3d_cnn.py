@@ -16,13 +16,16 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import *
-import h5py
 from utilities import importDataFromMatFiles, loadData
 from models import CNNModel
 
-# %%
+#%%
+importDir = "/home/vayyar_data/FirstBatch"
+x, y = importDataFromMatFiles(importDir)
+
 x = loadData("/Users/jameshe/Documents/radar_ura/vayyar/x.pickle")
 y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/y.pickle")
+#%%
 print(x.shape)
 x_shape_dim0 = x.shape[0]
 x_shape_dim1 = x.shape[1]
@@ -52,7 +55,7 @@ test_loader = torch.utils.data.DataLoader(test, batch_size = batch_size, shuffle
 #%%
 #Definition of hyperparameters
 num_classes = 5
-num_epochs = 8
+num_epochs = 10
 # Create CNN
 model = CNNModel(num_classes)
 model.train()
