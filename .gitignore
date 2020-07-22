@@ -1,2 +1,4 @@
+*.joblib
+*.hdf5
 *.pt
 *.pyc
