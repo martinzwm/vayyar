@@ -5,6 +5,8 @@ import os
 import json
 from sklearn.preprocessing import MultiLabelBinarizer, LabelEncoder
 from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+
 
 def loadmat(filename):
     '''
@@ -89,6 +91,9 @@ def importDataFromMatFiles(rootDir):
 def importDataOccupancyType(rootDir):
     xList = list()
     yList = list()
+    occupiedSeatList = list()
+    occupantTypeList = list()
+    pathList = list()
     
     for f in os.scandir(rootDir):
         if f.is_dir():
@@ -108,10 +113,16 @@ def importDataOccupancyType(rootDir):
                     xList.append(imagePower)
                     yLabel = makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel)
                     yList.append(yLabel)
+                    occupiedSeatList.append(str(occupancyLabel).replace('[','').replace(']','').replace(' ',''))
+                    occupantTypeList.append(str(occupancyTypeLabel).replace('[','').replace(']','').replace(' ','').replace("'",""))
+                    pathList.append('/'.join(f.path.split('/')[-2:]))
                     # print(f'{occupancyLabel}, {occupancyTypeLabel}')
-    xList = np.array(xList)
-    yList = np.array(yList)
-    return xList, yList
+    xList = np.array(xList, dtype='float32')
+    yList = np.array(yList, dtype='int8')
+    occupiedSeatList = np.array(occupiedSeatList, dtype='S')
+    occupantTypeList = np.array(occupantTypeList, dtype='S')
+    pathList = np.array(pathList, dtype='S')
+    return xList, yList, occupiedSeatList, occupantTypeList, pathList
 
 def makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel):
     label = list()
@@ -167,14 +178,16 @@ def scenarioWiseTransformLabels(fifteenClassLabels):
         for i in range(0, int(label.shape[0]), 3):
             if (list(label[i:i+3]) == [0,0,1]) or (list(label[i:i+3]) == [0,1,0]):
                 transform_str += str(int(i/3 + 1)) #people present, append seat number
+                transform_str += ","
             elif (list(label[i:i+3]) == [1,0,0]):
                 transform_str += ""
                 pass
             else:
                 transform_str += str(int(i/3 + 1))
                 transform_str += ("n/a")
-            transform_str += ","
-        result.append(transform_str[:-1])  
+                transform_str += ","
+        if not transform_str: transform_str = "empty"
+        if transform_str[-1] == ",": result.append(transform_str[:-1])  
     return result
 
 
@@ -184,6 +197,50 @@ def getConfusionMatrices(prediction: list, truth):
         confusionMatrices.append(confusion_matrix(truth[i], prediction[i]))
     return confusionMatrices
 
+def plot_confusion_matrix(y_true, y_pred, cm, classes, 
+                          normalize=False,
+                          title=None,
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if not title:
+        if normalize:
+            title = 'Normalized confusion matrix'
+        else:
+            title = 'Confusion matrix, without normalization'
+
+    
+    # Only use the labels that appear in the data
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    fig_cm, ax_cm = plt.subplots()
+    im = ax_cm.imshow(cm, interpolation='nearest', cmap=cmap)
+    ax_cm.figure.colorbar(im, ax=ax_cm)
+    # We want to show all ticks...
+    ax_cm.set(xticks=np.arange(cm.shape[1]),
+           yticks=np.arange(cm.shape[0]),
+           # ... and label them with the respective list entries
+           xticklabels=classes, yticklabels=classes,
+           title=title,
+           ylabel='True label',
+           xlabel='Predicted label')
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax_cm.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax_cm.text(j, i, format(cm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig_cm.tight_layout()
+    return ax_cm
 
 
 # %%

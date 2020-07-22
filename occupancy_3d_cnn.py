@@ -4,7 +4,7 @@ import numpy as np
 import json
 import scipy.io as sio
 import pickle
-
+import time
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MultiLabelBinarizer, StandardScaler
@@ -51,8 +51,10 @@ train_loader = torch.utils.data.DataLoader(train, batch_size = batch_size, shuff
 test_loader = torch.utils.data.DataLoader(test, batch_size = batch_size, shuffle = True)
 #%%
 #Definition of hyperparameters
+
+start = time.time()
 num_classes = 5
-num_epochs = 8
+num_epochs = 10
 # Create CNN
 model = CNNModel(num_classes)
 model.train()
@@ -86,7 +88,8 @@ for epoch in range(num_epochs):
         iteration_count += 1
         print(f'Epoch {epoch + 1} Iteration {iteration_count}: loss = {loss.data}')
 torch.save(model.state_dict(), "/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt")
-
+end = time.time()
+print(f'duration = {end - start}s')
 # %%
 model = CNNModel(5)
 model.load_state_dict(torch.load("/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt"))

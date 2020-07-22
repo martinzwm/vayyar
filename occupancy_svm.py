@@ -16,23 +16,18 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, plot_confusion_matrix
 import seaborn
 from sklearn.model_selection import cross_val_score
-import pickle
-from utilities import importDataFromMatFiles, importDataOccupancyType, saveData, loadData, seatWiseTransformLabels, scenarioWiseTransformLabels, getConfusionMatrices
+import h5py
+from utilities import plot_confusion_matrix, importDataFromMatFiles, importDataOccupancyType, saveData, loadData, seatWiseTransformLabels, scenarioWiseTransformLabels, getConfusionMatrices
 #%%
-x, y = importDataOccupancyType("/Users/jameshe/Documents/radar_ura/vayyar/FirstBatch")
-saveData(y, "/Users/jameshe/Documents/radar_ura/vayyar/processed_data/y_10_class.pickle")
-saveData(x, "/Users/jameshe/Documents/radar_ura/vayyar/processed_data/x_10_class.pickle")
-
-# %%
-X = loadData("/Users/jameshe/Documents/radar_ura/vayyar/processed_data/x_10_class.pickle")
-Y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/processed_data/y_10_class.pickle")
-
+with h5py.File('training_dataset.hdf5', 'r') as f:
+    X = f['x'][:]
+    Y = f['y'][:]
+    print(f['path'][:])
 #%%print(X.shape)
 print(Y.shape)
 X = np.reshape(X, (X.shape[0],X.shape[1] * X.shape[2] * X.shape[3]))
 print('Xin',X.shape)
 print(X.dtype)
-
 
 # %%
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.05)
@@ -73,26 +68,17 @@ from sklearn.preprocessing import LabelEncoder
 
 encoder = LabelEncoder()
 encoder.fit(y_pred_scenario_result)
-y_pred_trans_result = encoder.transform(y_pred_scenario_result)
-y_test_trans_result = encoder.transform(y_test_scenario_result)
+y_pred_trans_result = np.array([encoder.transform(y_pred_scenario_result)]).T
+y_test_trans_result = np.array([encoder.transform(y_test_scenario_result)]).T
 
-
-#confusionMatrices = getConfusionMatrices(y_pred_result, y_test_result)
+thirtytwo_classes_cf = confusion_matrix(y_test_trans_result, y_pred_trans_result)
+confusionMatrices = getConfusionMatrices(y_pred_seat_result, y_test_seat_result)
 # %%
-from sklearn.metrics import plot_confusion_matrix
+
+# plot_confusion_matrix(clf, y_pred_trans_result, y_test_trans_result)  # doctest: +SKIP
 class_names = list(set(y_test_scenario_result + y_pred_scenario_result))
-titles_options = [("Confusion matrix, without normalization", None),
-                  ("Normalized confusion matrix", 'false')]
-for title, normalize in titles_options:
-    disp = plot_confusion_matrix(clf, X_test, y_test,
-                                 display_labels=class_names,
-                                 cmap=plt.cm.Blues)
-    disp.ax_.set_title(title)
+plot_confusion_matrix(y_test_trans_result, y_pred_trans_result, thirtytwo_classes_cf, classes=np.array(class_names), title='32 classes Confusion Matrix')
 
-    print(title)
-    print(disp.confusion_matrix)
-
-plt.show()
 
 #%%
 for i in range(5):
@@ -105,3 +91,21 @@ print(cm)
 
 
 # %%
+import os
+shapeMap = dict()
+rootDir = '/Users/jameshe/Documents/radar_ura/vayyar/vCab_Recordings'
+for dayLevelItem in os.scandir(rootDir): #recording time level
+    if dayLevelItem.is_dir():
+        if 'OOP' not in dayLevelItem.name:
+            for carLevelItem in os.scandir(dayLevelItem.path):#car level
+                if carLevelItem.is_dir():
+                    for minuteLevelItem in os.scandir(carLevelItem.path):#minute level, e.g. v_Copy (12) - Copy__04-11-2019 15-23-54
+                        if minuteLevelItem.is_dir():
+                            with open(os.path.join(minuteLevelItem.path, "test_data.json")) as labelFile:
+                                labels = json.load(labelFile)
+                                occupancyLabel = str(labels["Occupied_Seats"])
+                            for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
+                                if file.name.endswith('.mat'):
+                                    # print(file.path)
+                                    frame = load_io_struct.loadmat(file)
+                                    s = ''.join(str(frame['rfImageStruct']['image_DxDyR'].shape))
