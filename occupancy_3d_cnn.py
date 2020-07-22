@@ -88,7 +88,7 @@ for epoch in range(num_epochs):
         loss_list.append(loss.data)
         iteration_count += 1
         print(f'Epoch {epoch + 1} Iteration {iteration_count}: loss = {loss.data}')
-torch.save(model.state_dict(), "/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt")
+torch.save(model.state_dict(), "/home/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt")
 
 # %%
 model = CNNModel(5)
