@@ -88,24 +88,3 @@ report = classification_report(y_test, y_pred)
 cm=multilabel_confusion_matrix(y_test,y_pred)
 print(report)
 print(cm)
-
-
-# %%
-import os
-shapeMap = dict()
-rootDir = '/Users/jameshe/Documents/radar_ura/vayyar/vCab_Recordings'
-for dayLevelItem in os.scandir(rootDir): #recording time level
-    if dayLevelItem.is_dir():
-        if 'OOP' not in dayLevelItem.name:
-            for carLevelItem in os.scandir(dayLevelItem.path):#car level
-                if carLevelItem.is_dir():
-                    for minuteLevelItem in os.scandir(carLevelItem.path):#minute level, e.g. v_Copy (12) - Copy__04-11-2019 15-23-54
-                        if minuteLevelItem.is_dir():
-                            with open(os.path.join(minuteLevelItem.path, "test_data.json")) as labelFile:
-                                labels = json.load(labelFile)
-                                occupancyLabel = str(labels["Occupied_Seats"])
-                            for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
-                                if file.name.endswith('.mat'):
-                                    # print(file.path)
-                                    frame = load_io_struct.loadmat(file)
-                                    s = ''.join(str(frame['rfImageStruct']['image_DxDyR'].shape))

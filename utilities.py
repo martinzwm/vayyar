@@ -1,3 +1,4 @@
+#%%
 import scipy.io as sio
 import pickle
 import numpy as np
@@ -14,6 +15,10 @@ def loadmat(filename):
     as it cures the problem of not properly recovering python dictionaries
     from mat files. It calls the function check keys to cure all entries
     which are still mat-objects
+
+    example: loadmat(.../168.mat) return a dict data = dict_keys(['__header__', '__version__', '__globals__', 'rfImageStruct'])
+    data['rfImageStruct'] returns a dict: dict_keys(['image_DxDyR', 'mask', 'dx_grid', 'dy_grid', 'r_grid', 'axis_names'])
+    further indexing by 'image_DxDyR' returns the actual rfImage
     '''
     data = sio.loadmat(filename, struct_as_record=False, squeeze_me=True)
     return _check_keys(data)
@@ -99,6 +104,7 @@ def importDataOccupancyType(rootDir):
         if f.is_dir():
             with open(os.path.join(f.path, "test_data.json")) as labelFile:
                 labels = json.load(labelFile)
+                # occupancyLabel is a list of int
                 occupancyLabel = labels["Occupied_Seats"]
                 occupancyTypeLabel = labels["Occupant_Type"]
             for file in os.scandir(os.path.join(f.path, "SavedVars_RF_Data")):
@@ -125,6 +131,9 @@ def importDataOccupancyType(rootDir):
     return xList, yList, occupiedSeatList, occupantTypeList, pathList
 
 def makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel):
+    """
+    Create a label in the form of a numpy array of int. length = 15.
+    """ 
     label = list()
     assert len(occupancyLabel) == len(occupancyTypeLabel), "occupancyLabel length does not equal to occupancyTypeLabel length"
     for item in range(1,6):
@@ -143,8 +152,9 @@ def makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel):
         else:
             # label.extend([1,0])
             label.extend([1,0,0])
+    label = np.array(label).astype('uint8')
     return label
-#%%
+
 def seatWiseTransformLabels(fifteenClassLabels):
     """
     tenClassLables: n x 15 label
@@ -242,5 +252,57 @@ def plot_confusion_matrix(y_true, y_pred, cm, classes,
     fig_cm.tight_layout()
     return ax_cm
 
+def makeCSVFile():
+    """
+    Code to generate the csv file that will later be used to construct the custom pytorch dataset
+    Works with the vCab dataset
+    """
+    import os
+    import pandas as pd
+    import json
+    from utilities import makeOccupancyLabelsWithType
+    #create dictionary with two keys: path and label, "path" indexes a list of path. "label" indexes a list of labels
+    data = dict()
+    data["path"] = list()
+    data["label"] = list()
+
+    #for loop to traverse the entire dataset and append to the two lists
+    rootDir = '/home/vayyar_data/vCab_Recordings'
+    for dayLevelItem in os.scandir(rootDir): #recording time level
+        if dayLevelItem.is_dir():
+            # omit out of position detectionf or now
+            if 'OOP' not in dayLevelItem.name:
+                for carLevelItem in os.scandir(dayLevelItem.path):#car level
+                    if carLevelItem.is_dir():
+                        for minuteLevelItem in os.scandir(carLevelItem.path):#minute level, e.g. v_Copy (12) - Copy__04-11-2019 15-23-54
+                            if minuteLevelItem.is_dir():
+                                with open(os.path.join(minuteLevelItem.path, "test_data.json")) as labelFile:
+                                    labels = json.load(labelFile)
+                                    occupancyLabel = labels["Occupied_Seats"]
+                                    occupancyTypeLabel = labels["Occupant_Type"]
+                                    for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
+                                        if file.name.endswith('.mat'):
+                                            data["path"].append(file.path)
+                                            data["label"].append(makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel))
+                                            
+    #create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
+    #each row will contain info for a sample
+    df = pd.DataFrame.from_dict(data)
+    print(df.head())
+    df.to_pickle('/home/vayyar_data/vCab_Recordings/path_label.pickle')
+
+def getPreprocessedRFImage(rfImageStruct):
+    """
+    Apply Geometric and threshold masking to the input rf image
+    Then take the magnitude of the complex values.
+    convert data type to float32
+    """
+    imagePower = np.absolute(np.power(rfImageStruct['image_DxDyR'], 2)).astype('float32')
+    imageMaxPower = np.max(imagePower)
+    maskG = rfImageStruct["mask"].astype(bool)
+    allowedDropRelPeak = 5
+    maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
+    imagePower[~ (maskG & maskT)] = 0
+    return imagePower
 
 # %%
