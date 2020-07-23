@@ -46,14 +46,12 @@ class vCabDataSet(Dataset):
     def __init__(self, rootDir):
         self.rootDir = rootDir
         self.path_label = pd.read_pickle(os.path.join(rootDir, "path_label.pickle"))
-        print(self.path_label.head())
     def __len__(self):
         return len(self.path_label)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.to_list()
-        #print(self.path_label)
         rfImagePath = os.path.join(self.rootDir, self.path_label.iloc[idx, 0])
         rfImageStruct = loadmat(rfImagePath)['rfImageStruct']
         imagePower = getPreprocessedRFImage(rfImageStruct)
@@ -68,6 +66,7 @@ for i in range(len(dataset)):
     print(sample['label'])
     print(type(sample['label']))
     print(dataset.path_label.iloc[i,0])
+    print(sample['imagePower'].shape)
     print(sample['label'].dtype)
     print(sample['imagePower'].dtype)
     break

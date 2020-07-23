@@ -288,7 +288,6 @@ def makeCSVFile():
     #create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
     #each row will contain info for a sample
     df = pd.DataFrame.from_dict(data)
-    print(df.head())
     df.to_pickle('/home/vayyar_data/vCab_Recordings/path_label.pickle')
 
 def getPreprocessedRFImage(rfImageStruct):
