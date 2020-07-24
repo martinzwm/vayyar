@@ -122,7 +122,6 @@ def importDataOccupancyType(rootDir):
                     occupiedSeatList.append(str(occupancyLabel).replace('[','').replace(']','').replace(' ',''))
                     occupantTypeList.append(str(occupancyTypeLabel).replace('[','').replace(']','').replace(' ','').replace("'",""))
                     pathList.append('/'.join(f.path.split('/')[-2:]))
-                    # print(f'{occupancyLabel}, {occupancyTypeLabel}')
     xList = np.array(xList, dtype='float32')
     yList = np.array(yList, dtype='int8')
     occupiedSeatList = np.array(occupiedSeatList, dtype='S')
