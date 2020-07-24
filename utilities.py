@@ -141,16 +141,12 @@ def makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel):
             index = occupancyLabel.index(item)
             occupancyType = occupancyTypeLabel[index]
             if occupancyType == 'ADT':
-                # label.extend([0,0])
                 label.extend([0,0,1])
             elif occupancyType == 'SCD' or occupancyType == 'MCD' or occupancyType == 'LCD' or occupancyType == 'IFT':
-                # label.extend([0,1])
                 label.extend([0,1,0])
             else:
-                # label.extend([1,0])
                 label.extend([1,0,0])
         else:
-            # label.extend([1,0])
             label.extend([1,0,0])
     label = np.array(label).astype('uint8')
     return label
