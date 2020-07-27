@@ -257,12 +257,13 @@ def makeCSVFile():
     import json
     from utilities import makeOccupancyLabelsWithType
     #create dictionary with two keys: path and label, "path" indexes a list of path. "label" indexes a list of labels
-    data = dict()
-    data["path"] = list()
-    data["label"] = list()
+    data = {"path_original": [],
+            "label": [],
+            "processed_filename": []}
 
     #for loop to traverse the entire dataset and append to the two lists
     rootDir = '/home/vayyar_data/vCab_Recordings'
+    index = 0
     for dayLevelItem in os.scandir(rootDir): #recording time level
         if dayLevelItem.is_dir():
             # omit out of position detectionf or now
@@ -277,13 +278,24 @@ def makeCSVFile():
                                     occupancyTypeLabel = labels["Occupant_Type"]
                                     for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
                                         if file.name.endswith('.mat'):
-                                            data["path"].append(file.path)
-                                            data["label"].append(makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel))
-                                            
+                                            try:
+                                                processed_csv = '/home/vayyar_data/processed_vCab_Recordings/%s.npy' % (str(index))
+                                                data["path_original"].append(file.path)
+                                                data["processed_filename"].append(index)
+                                                data["label"].append(makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel))
+                                                rfImageStruct = loadmat(file.path)['rfImageStruct']
+                                                imagePower = getPreprocessedRFImage(rfImageStruct)
+                                                np.save(processed_csv, imagePower)
+                                                index += 1
+                                            except Exception as ex:
+                                                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                                                message = template.format(type(ex).__name__, ex.args)
+                                                print(message)
+                                                print(file.path)
     #create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
     #each row will contain info for a sample
     df = pd.DataFrame.from_dict(data)
-    df.to_pickle('/home/vayyar_data/vCab_Recordings/path_label.pickle')
+    df.to_pickle('/home/vayyar_data/processed_vCab_Recordings/path_label.pickle')
 
 def getPreprocessedRFImage(rfImageStruct):
     """
@@ -298,5 +310,6 @@ def getPreprocessedRFImage(rfImageStruct):
     maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
     imagePower[~ (maskG & maskT)] = 0
     return imagePower
+
 
 # %%

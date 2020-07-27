@@ -1,4 +1,3 @@
-#%%
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -7,7 +6,22 @@ import os
 from utilities import loadmat, getPreprocessedRFImage
 
 
-#%%
+class SVM(nn.Module):
+    """
+    Linear Support Vector Machine
+    -----------------------------
+    This SVM is a subclass of the PyTorch nn module that
+    implements the Linear  function. The  size  of  each 
+    input sample is 2 and output sample  is 1.
+    """
+    def __init__(self):
+        super(SVM, self).__init__()  # Call the init function of nn.Module
+        self.fully_connected = nn.Linear(2, 1)  # Implement the Linear function
+        
+    def forward(self, x):
+        fwd = self.fully_connected(x)  # Forward pass
+        return fwd
+
 class CNNModel(nn.Module):
     def __init__(self, num_classes):
         super(CNNModel, self).__init__()
@@ -44,118 +58,3 @@ class CNNModel(nn.Module):
 
         return out
 
-class vCabDataSet(Dataset):
-    def __init__(self, rootDir, transform = None):
-        self.rootDir = rootDir
-        self.path_label = pd.read_pickle(os.path.join(rootDir, "path_label.pickle"))
-        self.transform = transform
-    def __len__(self):
-        return len(self.path_label)
-
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.to_list()
-        rfImagePath = os.path.join(self.rootDir, self.path_label.iloc[idx, 0])
-        rfImageStruct = loadmat(rfImagePath)['rfImageStruct']
-        imagePower = getPreprocessedRFImage(rfImageStruct)
-        label = self.path_label.iloc[idx, 1]
-        sample = {'imagePower':imagePower, 'label':label}
-        return sample
-#%%
-dataset = vCabDataSet('/home/vayyar_data/vCab_Recordings')
-#%%
-train_percent = 0.9
-validation_percent = 0.05
-testing_percent = 0.05
-total_num = len(dataset)
-training_num = int(train_percent * total_num)
-validation_num = int(validation_percent * total_num)
-testing_num = int(total_num - training_num - validation_num)
-
-train_set, val_set, test_set = torch.utils.data.random_split(dataset, [training_num, validation_num, testing_num])
-#%%
-loader = DataLoader(
-    train_set,
-    batch_size=128,
-    num_workers=1,
-    shuffle=False
-)
-
-mean = 0.
-std = 0.
-count = 0
-for samples in loader:
-    batch_samples = samples.size(0) # batch size (the last batch can have smaller size!)
-    print(samples.shape)
-    samples = samples.view(batch_samples, samples.size(1)*samples.size(2)*samples.size(3))
-    print(samples.shape)
-    mean += samples.mean()
-    std += samples.std()
-    count += 1
-
-mean /= len(loader.dataset)/count
-std /= len(loader.dataset)/count
-print(f'{mean}, {std}')
-
-#%%
-import time
-start = time.time()
-set_img = set()
-for i in range(len(dataset)):
-    sample = dataset[i]
-    # print(sample['label'])
-    # print(type(sample['label']))
-    # print(dataset.path_label.iloc[i,0])
-    # print(sample['imagePower'].shape)
-    # print(sample['label'].dtype)
-    # print(sample['imagePower'].dtype)
-    set_img.add(sample['imagePower'].shape)
-
-end = time.time()
-print(end-start)
-
-# %%
-import numpy as np
-import random
-torch.manual_seed(12)
-torch.cuda.manual_seed(12)
-np.random.seed(12)
-random.seed(12)
-class MyDataset(Dataset):
-    def __init__(self):
-        self.data = torch.randn(100, 3, 24, 24)
-        
-    def __getitem__(self, index):
-        x = self.data[index]
-        return x
-
-    def __len__(self):
-        return len(self.data)
-    
-
-dataset = MyDataset()
-loader = DataLoader(
-    dataset,
-    batch_size=20,
-    num_workers=1,
-    shuffle=False
-)
-
-
-mean = 0.
-std = 0.
-count = 0
-for samples in loader:
-    batch_samples = samples.size(0) # batch size (the last batch can have smaller size!)
-    print(samples.shape)
-    samples = samples.view(batch_samples, samples.size(1)*samples.size(2)*samples.size(3))
-    print(samples.shape)
-    mean += samples.mean()
-    std += samples.std()
-    count += 1
-
-mean /= len(loader.dataset)/count
-std /= len(loader.dataset)/count
-print(f'{mean}, {std}')
-
-# %%
