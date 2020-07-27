@@ -17,10 +17,8 @@ class SVM(nn.Module):
     def __init__(self):
         super(SVM, self).__init__()  # Call the init function of nn.Module
         self.fully_connected = nn.Linear(841, 15)  # Implement the Linear function
-        print('svm init done')
 
     def forward(self, x):
-        print('in svm forward')
         x = x.view(x.size(0), -1)
         fwd = self.fully_connected(x)  # Forward pass
         return fwd

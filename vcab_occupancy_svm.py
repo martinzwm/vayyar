@@ -34,13 +34,13 @@ train_set, val_set, test_set = random_split(dataset, [training_num, validation_n
 # %%
 train_loader = DataLoader(
     train_set,
-    batch_size=32768,
+    batch_size=256,
     num_workers=8,
     shuffle=True
 )
 val_loader = DataLoader(
     val_set,
-    batch_size=32768,
+    batch_size=256,
     num_workers=8,
     shuffle=True
 )
@@ -109,21 +109,21 @@ for epoch in range(n_epochs):
     print("Epoch {}, Loss: {}".format(epoch, sum_loss))
     print("Epoch {}, Val Loss: {}".format(epoch, sum_val_loss))
 #%%
-print(model.state_dict(), "/home/jennifer_yu/Desktop/vayyar_4d_radar_intelligience/svm.pt")
+print(model.state_dict(), "/home/vayyar_model/svm_20200727.pt")
 
-#%% one
-mean = 0.
-std = 0.
-count = 0
-for samples in loader:
-    samples = samples['imagePower']
-    mean += samples.mean()
-    std += samples.std()
-    count += 1
+#%% this is a one time running cell for calculating te mean standard deviation
+# mean = 0.
+# std = 0.
+# count = 0
+# for samples in loader:
+#     samples = samples['imagePower']
+#     mean += samples.mean()
+#     std += samples.std()
+#     count += 1
 
-mean /= len(loader.dataset)/count
-std /= len(loader.dataset)/count
-print(f'{mean}, {std}')
+# mean /= len(loader.dataset)/count
+# std /= len(loader.dataset)/count
+# print(f'{mean}, {std}')
 
 
 
