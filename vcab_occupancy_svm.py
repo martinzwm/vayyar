@@ -54,7 +54,7 @@ test_loader = DataLoader(
 #%% Training the SVM
 import time
 start = time.time()
-learning_rate = 0.01  # Learning rate
+learning_rate = 0.001  # Learning rate
 n_epochs = 100  # Number of epochs
 
 def make_train_step(model, loss_fn, optimizer):
@@ -83,7 +83,7 @@ def hinge_loss(y, y_hat):
     return torch.mean(torch.clamp(1 - y_hat * y, min=0))
 
 model = SVM()  # Our model
-optimizer = optim.SGD(model.parameters(), lr=learning_rate)  # Our optimizer
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Our optimizer
 model.train()  # Our model, SVM is a subclass of the nn.Module, so it inherits the train method
 losses = []
 val_losses = []

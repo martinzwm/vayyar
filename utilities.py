@@ -313,3 +313,24 @@ def getPreprocessedRFImage(rfImageStruct):
 
 
 # %%
+# run once to get all the different shapes of rf image from the vCab dataset
+# shape_dict = dict()
+# rootDir = '/home/vayyar_data/vCab_Recordings'
+# for dayLevelItem in os.scandir(rootDir): #recording time level
+#     if dayLevelItem.is_dir():
+#         # omit out of position detectionf or now
+#         if 'OOP' not in dayLevelItem.name:
+#             for carLevelItem in os.scandir(dayLevelItem.path):#car level
+#                 if carLevelItem.is_dir():
+#                     for minuteLevelItem in os.scandir(carLevelItem.path):#minute level, e.g. v_Copy (12) - Copy__04-11-2019 15-23-54
+#                         if minuteLevelItem.is_dir():
+#                             for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
+#                                 if file.name.endswith('.mat'):
+#                                     rfImageShape = loadmat(file.path)['rfImageStruct']['image_DxDyR'].shape
+#                                     if rfImageShape not in shape_dict:
+#                                         shape_dict[rfImageShape] = file.path
+#                                         print(shape_dict)
+#                                         break
+# print(shape_dict)
+
+# %%
