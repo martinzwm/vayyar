@@ -38,6 +38,6 @@ class vCabDataSet(Dataset):
         label = self.path_label.iloc[idx, 1]
         if self.transform:
             imagePower = np.squeeze(self.transform(imagePower))
-        sample = {'imagePower':imagePower, 'label':label}
+        sample = {'imagePower':imagePower, 'label':label, 'path':rfImagePath}
         return sample
 # %%
