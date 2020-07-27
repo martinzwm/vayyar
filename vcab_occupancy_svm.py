@@ -34,18 +34,18 @@ train_set, val_set, test_set = random_split(dataset, [training_num, validation_n
 # %%
 train_loader = DataLoader(
     train_set,
-    batch_size=128,
+    batch_size=32768,
     num_workers=8,
     shuffle=True
 )
 val_loader = DataLoader(
     val_set,
-    batch_size=128,
+    batch_size=32768,
     num_workers=8,
     shuffle=True
 )
 #%% Training the SVM
-learning_rate = 0.1  # Learning rate
+learning_rate = 0.001  # Learning rate
 n_epochs = 10  # Number of epochs
 
 def make_train_step(model, loss_fn, optimizer):
@@ -65,8 +65,7 @@ def make_train_step(model, loss_fn, optimizer):
         optimizer.step()
         optimizer.zero_grad()
         # Returns the loss
-        # return loss.item()
-        return loss[0].data.cpu().numpy()
+        return loss.item()
     
     # Returns the function that will be called inside the train loop
     return train_step
@@ -79,23 +78,21 @@ optimizer = optim.SGD(model.parameters(), lr=learning_rate)  # Our optimizer
 model.train()  # Our model, SVM is a subclass of the nn.Module, so it inherits the train method
 losses = []
 val_losses = []
-sum_loss = 0
-sum_val_loss = 0
 train_step = make_train_step(model, hinge_loss, optimizer)
 
 for epoch in range(n_epochs):
+    sum_loss = 0
+    sum_val_loss = 0
     for batch in train_loader:
         #TODO: when have CUDA:
         #x_batch = batch['imagePower'].to(device)
         #y_batch = batch['label'].to(device)
 
-        x_batch = torch.flatten(batch['imagePower'])
+        x_batch = batch['imagePower']
         y_batch = batch['label']
-        print(batch['imagePower'].shape)
-        print(y_batch.shape)
 
         loss = train_step(x_batch, y_batch)
-        sum_loss += loss[0].data.cpu().numpy()
+        sum_loss += loss
         losses.append(loss)
         
     with torch.no_grad():
@@ -107,35 +104,12 @@ for epoch in range(n_epochs):
 
             y_val_pred = model(x_val)
             val_loss = hinge_loss(y_val, y_val_pred) 
-            sum_val_loss += val_loss[0].data.cpu().numpy()
+            sum_val_loss += val_loss.item()
             val_losses.append(val_loss.item())
-    print("Epoch {}, Loss: {}".format(epoch, sum_loss[0]))
-    print("Epoch {}, Val Loss: {}".format(epoch, sum_val_loss[0]))
-
-print(model.state_dict(), "/home/jennifer_yu/Desktop/vayyar_4d_radar_intelligience/svm.pt")
+    print("Epoch {}, Loss: {}".format(epoch, sum_loss))
+    print("Epoch {}, Val Loss: {}".format(epoch, sum_val_loss))
 #%%
-for epoch in range(epoch):
-    perm = torch.randperm(N)  # Generate a set of random numbers of length: sample size
-    sum_loss = 0  # Loss for each epoch
-        
-    for i in range(0, N, batch_size):
-        x = X[perm[i:i + batch_size]]  # Pick random samples by iterating over random permutation
-        y = Y[perm[i:i + batch_size]]  # Pick the correlating class
-        
-        x = Variable(x)  # Convert features and classes to variables
-        y = Variable(y)
-
-        optimizer.zero_grad()  # Manually zero the gradient buffers of the optimizer
-        output = model(x)  # Compute the output by doing a forward pass
-        
-        loss = torch.mean(torch.clamp(1 - output * y, min=0))  # hinge loss
-        loss.backward()  # Backpropagation
-        optimizer.step()  # Optimize and adjust weights
-
-        sum_loss += loss[0].data.cpu().numpy()  # Add the loss
-        
-    print("Epoch {}, Loss: {}".format(epoch, sum_loss[0]))
-torch.save(model.state_dict(), "/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt")
+print(model.state_dict(), "/home/jennifer_yu/Desktop/vayyar_4d_radar_intelligience/svm.pt")
 
 #%% one
 mean = 0.

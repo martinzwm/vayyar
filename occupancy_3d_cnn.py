@@ -23,8 +23,8 @@ from models import CNNModel
 importDir = "/home/vayyar_data/FirstBatch"
 x, y = importDataFromMatFiles(importDir)
 
-x = loadData("/Users/jameshe/Documents/radar_ura/vayyar/x.pickle")
-y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/y.pickle")
+# x = loadData("/Users/jameshe/Documents/radar_ura/vayyar/x.pickle")
+# y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/y.pickle")
 #%%
 print(x.shape)
 x_shape_dim0 = x.shape[0]

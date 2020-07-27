@@ -16,9 +16,12 @@ class SVM(nn.Module):
     """
     def __init__(self):
         super(SVM, self).__init__()  # Call the init function of nn.Module
-        self.fully_connected = nn.Linear(2, 1)  # Implement the Linear function
-        
+        self.fully_connected = nn.Linear(841, 15)  # Implement the Linear function
+        print('svm init done')
+
     def forward(self, x):
+        print('in svm forward')
+        x = x.view(x.size(0), -1)
         fwd = self.fully_connected(x)  # Forward pass
         return fwd
 
@@ -35,6 +38,9 @@ class CNNModel(nn.Module):
         self.sigmoid = nn.Sigmoid()               
         
     def _conv_layer_set(self, in_c, out_c):
+        print(in_c)
+        print('--------')
+        print(out_c)
         conv_layer = nn.Sequential(
         nn.Conv3d(in_c, out_c, kernel_size=(3, 3, 3), padding=0),
         nn.LeakyReLU(),
