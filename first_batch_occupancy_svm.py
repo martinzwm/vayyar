@@ -4,9 +4,7 @@
 #%%%
 import numpy as np
 import pandas as pd
-import seaborn as sn
 from matplotlib import style
-style.use("ggplot")
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -14,7 +12,6 @@ from sklearn.decomposition import PCA
 from sklearn import svm
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, plot_confusion_matrix
-import seaborn
 from sklearn.model_selection import cross_val_score
 import h5py
 from utilities import plot_confusion_matrix, importDataFromMatFiles, importDataOccupancyType, saveData, loadData, seatWiseTransformLabels, scenarioWiseTransformLabels, getConfusionMatrices
@@ -25,8 +22,9 @@ with h5py.File('training_dataset.hdf5', 'r') as f:
     print(f['path'][:])
 #%%print(X.shape)
 print(Y.shape)
-X = np.reshape(X, (X.shape[0],X.shape[1] * X.shape[2] * X.shape[3]))
-print('Xin',X.shape)
+X = np.squeeze(np.sum(X, axis=3))
+# X = np.reshape(X, (X.shape[0],X.shape[1] * X.shape[2] * X.shape[3]))
+print('Xin.shape = ',X.shape)
 print(X.dtype)
 
 # %%

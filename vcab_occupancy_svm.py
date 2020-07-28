@@ -19,11 +19,10 @@ transform = transforms.Compose([
                                  std=[8374.5048828125])
         ])
 dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
-print(dataset[0]['imagePower'].shape)
 #%% Split training and testing dataset
 train_percent = 0.1
-validation_percent = 0.1
-testing_percent = 0.8
+validation_percent = 0.01
+testing_percent = 0.89
 total_num = len(dataset)
 training_num = int(train_percent * total_num)
 validation_num = int(validation_percent * total_num)
@@ -54,7 +53,7 @@ test_loader = DataLoader(
 #%% Training the SVM
 import time
 start = time.time()
-learning_rate = 0.001  # Learning rate
+learning_rate = 0.1  # Learning rate
 n_epochs = 100  # Number of epochs
 
 def make_train_step(model, loss_fn, optimizer):

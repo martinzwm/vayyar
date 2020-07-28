@@ -12,7 +12,7 @@ from torchvision import transforms
 
 #%%
 def firstBatchdataPrep():
-    x, y, occupiedSeat, occupantType, path = importDataOccupancyType("/home/vayyar/FirstBatch")
+    x, y, occupiedSeat, occupantType, path = importDataOccupancyType("/home/vayyar_data/FirstBatch")
     with h5py.File('training_dataset.hdf5', 'w') as f:
         f.create_dataset('x', data=x)
         f.create_dataset('y', data=y)
@@ -34,10 +34,11 @@ class vCabDataSet(Dataset):
             idx = idx.to_list()
         rfImagePath = os.path.join(self.rootDir, str(self.path_label.iloc[idx, 2]) + '.npy')
         imagePower = np.load(rfImagePath)
-        imagePower = np.squeeze(np.sum(imagePower, axis=2)) #TEMPORARY SOLUTION: Squeeze the 3D dataset into 2D 
-        label = self.path_label.iloc[idx, 1]
+        imagePower = np.sum(imagePower, axis=-1, keepdims=True)/imagePower.shape[-1] #TEMPORARY SOLUTION: Squeeze the 3D dataset into 2D 
         if self.transform:
-            imagePower = np.squeeze(self.transform(imagePower))
+            imagePower = self.transform(imagePower)
+            imagePower = np.squeeze(imagePower)
+        label = self.path_label.iloc[idx, 1]
         sample = {'imagePower':imagePower, 'label':label, 'path':rfImagePath}
         return sample
 # %%
