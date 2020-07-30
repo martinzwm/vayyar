@@ -3,7 +3,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 import pandas as pd
 from utilities import loadmat, getPreprocessedRFImage
 import os
-from data_prep import vCabDataSet
+from data_prep import vCabDataSet, cropR
 import torch
 import numpy as np
 from torchvision import transforms
@@ -15,6 +15,7 @@ from sklearn.multioutput import MultiOutputClassifier
 
 #%% Import vCab_Recordings dataset
 transform = transforms.Compose([
+            cropR(24),
             transforms.ToTensor(),
             transforms.Normalize(mean=[2531.013427734375],
                                  std=[8374.5048828125])
@@ -52,6 +53,7 @@ test_loader = DataLoader(
     num_workers=8,
     shuffle=True
 )
+
 #%% Training the SVM
 import time
 start = time.time()
@@ -100,7 +102,7 @@ for epoch in range(n_epochs):
         #x_batch = batch['imagePower'].to(device)
         #y_batch = batch['label'].to(device)
 
-        x_batch = batch['imagePower']
+        x_batch = batch['image_power']
         y_batch = batch['label']
     
         loss = train_step(x_batch, y_batch)
@@ -114,7 +116,7 @@ for epoch in range(n_epochs):
             #x_val = x_val.to(device)
             #y_val = y_val.to(device)
             
-            x_val = val_batch['imagePower']
+            x_val = val_batch['image_power']
             y_val = val_batch['label']
 
             model.eval()
@@ -158,7 +160,7 @@ for test_batch in test_loader:
     #x_val = x_val.to(device)
     #y_val = y_val.to(device)
     
-    x_test = test_batch['imagePower']
+    x_test = test_batch['image_power']
     y_test = test_batch['label']
     path = test_batch['path']
 
@@ -213,7 +215,7 @@ for i, batch in enumerate(train_loader):
     #x_batch = batch['imagePower'].to(device)
     #y_batch = batch['label'].to(device)
     
-    x_batch = batch['imagePower'].detach().cpu().numpy()
+    x_batch = batch['image_power'].detach().cpu().numpy()
     x_batch = x_batch.reshape(x_batch.shape[0], x_batch.shape[1]*x_batch.shape[2])
     y_batch = batch['label'].detach().cpu().numpy()
     for clf in clf_dict:
@@ -233,7 +235,7 @@ val_accuracy = {'svm':[],
                 'perceptron': []
                 }
 for i, batch in enumerate(val_loader):
-    x_batch = batch['imagePower'].detach().cpu().numpy()
+    x_batch = batch['image_power'].detach().cpu().numpy()
     x_batch = x_batch.reshape(x_batch.shape[0], x_batch.shape[1]*x_batch.shape[2])
     y_batch = batch['label'].detach().cpu().numpy()
     for clf in clf_dict:
