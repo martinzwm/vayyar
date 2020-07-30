@@ -7,6 +7,10 @@ import json
 from sklearn.preprocessing import MultiLabelBinarizer, LabelEncoder
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
+from data_prep import vCabDataSet
+from torch.utils.data import DataLoader, Subset
+import random
+from torchvision import transforms
 
 
 def loadmat(filename):
@@ -311,6 +315,60 @@ def getPreprocessedRFImage(rfImageStruct):
     imagePower[~ (maskG & maskT)] = 0
     return imagePower
 
+def calculateMeanStd(dataset):
+    dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings')
+    batch_size = 256
+    dataset_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=8,
+        shuffle=True
+    )
+    mean = 0.
+    std = 0.
+    count = 0
+    for samples in dataset_loader:
+        samples = samples['imagePower']
+        mean += samples.mean()
+        std += samples.std()
+        count += 1
+
+    mean /= len(dataset_loader.dataset)/count
+    std /= len(dataset_loader.dataset)/count
+    print(f'mean: {mean}, standard deviation: {std}')
+    return mean, std
+
+def verifyNormalization(dataset, image_mean, image_std):
+    transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[image_mean],
+                                 std=[image_std])
+        ])
+    dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform=transform)
+    subset_percent = 0.01
+    subset_num = subset_percent * len(dataset)
+    subset_indices = random.sample(range(0, len(dataset)), subset_num)
+    subset = Subset(dataset, subset_indices)
+    batch_size = 256
+    dataset_loader = DataLoader(
+        subset,
+        batch_size=batch_size,
+        num_workers=8,
+        shuffle=True
+    )
+    mean = 0.
+    std = 0.
+    count = 0
+    for samples in dataset_loader:
+        samples = samples['imagePower']
+        mean += samples.mean()
+        std += samples.std()
+        count += 1
+
+    mean /= len(dataset_loader.dataset)/count
+    std /= len(dataset_loader.dataset)/count
+    print(f'mean: {mean}, standard deviation: {std}')
+    return mean, std
 
 # %%
 # run once to get all the different shapes of rf image from the vCab dataset
