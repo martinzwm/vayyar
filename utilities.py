@@ -7,9 +7,6 @@ import json
 from sklearn.preprocessing import MultiLabelBinarizer, LabelEncoder
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader, Subset
-import random
-from torchvision import transforms
 
 
 def loadmat(filename):

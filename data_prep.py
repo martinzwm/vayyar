@@ -4,10 +4,11 @@ import numpy as np
 from utilities import importDataOccupancyType
 import pandas as pd
 import os
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 import torch
 from utilities import loadmat
 from torchvision import transforms
+import random
 
 
 def firstBatchdataPrep():
@@ -36,7 +37,7 @@ class vCabDataSet(Dataset):
         if self.transform:
             image_power = self.transform(image_power)
         label = self.path_label.iloc[idx, 1]
-        sample = {'image_power':image_power, 'label':label, 'path':rfImagePath}
+        sample = {'imagePower':image_power, 'label':label, 'path':rfImagePath}
         return sample
 
 class cropR(object):
@@ -54,8 +55,11 @@ class cropR(object):
         return image_power
 # %%
 
-def calculateMeanStd(dataset):
-    dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings')
+def calculateMeanStd():
+    transform = transforms.Compose([
+                cropR(24),
+            ])
+    dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
     batch_size = 256
     dataset_loader = DataLoader(
         dataset,
