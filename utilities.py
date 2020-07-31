@@ -7,7 +7,6 @@ import json
 from sklearn.preprocessing import MultiLabelBinarizer, LabelEncoder
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
-from data_prep import vCabDataSet
 from torch.utils.data import DataLoader, Subset
 import random
 from torchvision import transforms
@@ -314,81 +313,3 @@ def getPreprocessedRFImage(rfImageStruct):
     maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
     imagePower[~ (maskG & maskT)] = 0
     return imagePower
-
-def calculateMeanStd(dataset):
-    dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings')
-    batch_size = 256
-    dataset_loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        num_workers=8,
-        shuffle=True
-    )
-    mean = 0.
-    std = 0.
-    count = 0
-    for samples in dataset_loader:
-        samples = samples['imagePower']
-        mean += samples.mean()
-        std += samples.std()
-        count += 1
-
-    mean /= len(dataset_loader.dataset)/count
-    std /= len(dataset_loader.dataset)/count
-    print(f'mean: {mean}, standard deviation: {std}')
-    return mean, std
-
-def verifyNormalization(dataset, image_mean, image_std):
-    transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[image_mean],
-                                 std=[image_std])
-        ])
-    dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform=transform)
-    subset_percent = 0.01
-    subset_num = subset_percent * len(dataset)
-    subset_indices = random.sample(range(0, len(dataset)), subset_num)
-    subset = Subset(dataset, subset_indices)
-    batch_size = 256
-    dataset_loader = DataLoader(
-        subset,
-        batch_size=batch_size,
-        num_workers=8,
-        shuffle=True
-    )
-    mean = 0.
-    std = 0.
-    count = 0
-    for samples in dataset_loader:
-        samples = samples['imagePower']
-        mean += samples.mean()
-        std += samples.std()
-        count += 1
-
-    mean /= len(dataset_loader.dataset)/count
-    std /= len(dataset_loader.dataset)/count
-    print(f'mean: {mean}, standard deviation: {std}')
-    return mean, std
-
-# %%
-# run once to get all the different shapes of rf image from the vCab dataset
-# shape_dict = dict()
-# rootDir = '/home/vayyar_data/vCab_Recordings'
-# for dayLevelItem in os.scandir(rootDir): #recording time level
-#     if dayLevelItem.is_dir():
-#         # omit out of position detectionf or now
-#         if 'OOP' not in dayLevelItem.name:
-#             for carLevelItem in os.scandir(dayLevelItem.path):#car level
-#                 if carLevelItem.is_dir():
-#                     for minuteLevelItem in os.scandir(carLevelItem.path):#minute level, e.g. v_Copy (12) - Copy__04-11-2019 15-23-54
-#                         if minuteLevelItem.is_dir():
-#                             for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
-#                                 if file.name.endswith('.mat'):
-#                                     rfImageShape = loadmat(file.path)['rfImageStruct']['image_DxDyR'].shape
-#                                     if rfImageShape not in shape_dict:
-#                                         shape_dict[rfImageShape] = file.path
-#                                         print(shape_dict)
-#                                         break
-# print(shape_dict)
-
-# %%
