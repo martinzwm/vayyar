@@ -14,7 +14,6 @@ from sklearn.metrics import accuracy_score
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.optim import *
 from utilities import importDataFromMatFiles, loadData
 from models import CNNModel
