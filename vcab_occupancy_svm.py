@@ -12,20 +12,20 @@ from torch.autograd import Variable
 from models import SVM
 import pkbar
 from sklearn.multioutput import MultiOutputClassifier
-
+torch.manual_seed(torch.initial_seed())
 #%% Import vCab_Recordings dataset
 transform = transforms.Compose([
             cropR(24),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[2531.013427734375],
-                                 std=[8374.5048828125])
+            transforms.Normalize(mean=[7.608346462249756],
+                                 std=[6.12775993347168])
         ])
 dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
 
 #%% Split training and testing dataset
-train_percent = 0.1
-validation_percent = 0.01
-testing_percent = 0.89
+train_percent = 0.9
+validation_percent = 0.05
+testing_percent = 0.05
 total_num = len(dataset)
 training_num = int(train_percent * total_num)
 validation_num = int(validation_percent * total_num)
@@ -34,7 +34,7 @@ testing_num = int(total_num - training_num - validation_num)
 train_set, val_set, test_set = random_split(dataset, [training_num, validation_num, testing_num])
 
 # %%
-batch_size = 256
+batch_size = 512
 train_loader = DataLoader(
     train_set,
     batch_size=batch_size,
@@ -53,141 +53,141 @@ test_loader = DataLoader(
     num_workers=8,
     shuffle=True
 )
+print("finished loaders")
+# #%% Training the SVM
+# import time
+# start = time.time()
+# learning_rate = 0.1  # Learning rate
+# n_epochs = 100  # Number of epochs
 
-#%% Training the SVM
-import time
-start = time.time()
-learning_rate = 0.1  # Learning rate
-n_epochs = 100  # Number of epochs
-
-def make_train_step(model, loss_fn, optimizer):
-    # Builds function that performs a step in the train loop
-    def train_step(x, y):
-        # Clear gradients
-        optimizer.zero_grad()
-        # Sets model to TRAIN mode
-        model.train()
-        # Makes predictions
-        y_hat = model(x)
-        # Computes loss
-        loss = loss_fn(y, y_hat)  # hinge loss
-        # Computes gradients
-        loss.backward()
-        # Updates parameters and zeroes gradients
-        optimizer.step()
-        optimizer.zero_grad()
-        # Returns the loss
-        return loss.item()
+# def make_train_step(model, loss_fn, optimizer):
+#     # Builds function that performs a step in the train loop
+#     def train_step(x, y):
+#         # Clear gradients
+#         optimizer.zero_grad()
+#         # Sets model to TRAIN mode
+#         model.train()
+#         # Makes predictions
+#         y_hat = model(x)
+#         # Computes loss
+#         loss = loss_fn(y, y_hat)  # hinge loss
+#         # Computes gradients
+#         loss.backward()
+#         # Updates parameters and zeroes gradients
+#         optimizer.step()
+#         optimizer.zero_grad()
+#         # Returns the loss
+#         return loss.item()
     
-    # Returns the function that will be called inside the train loop
-    return train_step
+#     # Returns the function that will be called inside the train loop
+#     return train_step
 
-def hinge_loss(y, y_hat):
-    return torch.mean(torch.clamp(1 - y_hat * y, min=0))
+# def hinge_loss(y, y_hat):
+#     return torch.mean(torch.clamp(1 - y_hat * y, min=0))
 
-model = SVM()  # Our model
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Our optimizer
-model.train()  # Our model, SVM is a subclass of the nn.Module, so it inherits the train method
-losses = []
-val_losses = []
-train_step = make_train_step(model, hinge_loss, optimizer)
-train_per_epoch = int(len(train_set) / batch_size)
+# model = SVM()  # Our model
+# optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Our optimizer
+# model.train()  # Our model, SVM is a subclass of the nn.Module, so it inherits the train method
+# losses = []
+# val_losses = []
+# train_step = make_train_step(model, hinge_loss, optimizer)
+# train_per_epoch = int(len(train_set) / batch_size)
 
-for epoch in range(n_epochs):
-    sum_loss = 0
-    sum_val_loss = 0
-    kbar = pkbar.Kbar(target=train_per_epoch, width=8)
-    for i, batch in enumerate(train_loader):
-        #TODO: when have CUDA:
-        #x_batch = batch['imagePower'].to(device)
-        #y_batch = batch['label'].to(device)
+# for epoch in range(n_epochs):
+#     sum_loss = 0
+#     sum_val_loss = 0
+#     kbar = pkbar.Kbar(target=train_per_epoch, width=8)
+#     for i, batch in enumerate(train_loader):
+#         #TODO: when have CUDA:
+#         #x_batch = batch['imagePower'].to(device)
+#         #y_batch = batch['label'].to(device)
 
-        x_batch = batch['image_power']
-        y_batch = batch['label']
+#         x_batch = batch['imagePower']
+#         y_batch = batch['label']
     
-        loss = train_step(x_batch, y_batch)
-        sum_loss += loss
-        losses.append(loss)
-        kbar.update(i, values=[("loss", loss)])
+#         loss = train_step(x_batch, y_batch)
+#         sum_loss += loss
+#         losses.append(loss)
+#         kbar.update(i, values=[("loss", loss)])
 
-    print('done training')
-    with torch.no_grad():
-        for val_batch in val_loader:
-            #x_val = x_val.to(device)
-            #y_val = y_val.to(device)
+#     print('done training')
+#     with torch.no_grad():
+#         for val_batch in val_loader:
+#             #x_val = x_val.to(device)
+#             #y_val = y_val.to(device)
             
-            x_val = val_batch['image_power']
-            y_val = val_batch['label']
+#             x_val = val_batch['imagePower']
+#             y_val = val_batch['label']
 
-            model.eval()
+#             model.eval()
 
-            y_val_pred = model(x_val)
-            val_loss = hinge_loss(y_val, y_val_pred) 
-            sum_val_loss += val_loss.item()
-            val_losses.append(val_loss.item())
+#             y_val_pred = model(x_val)
+#             val_loss = hinge_loss(y_val, y_val_pred) 
+#             sum_val_loss += val_loss.item()
+#             val_losses.append(val_loss.item())
             
-    kbar.add(1, values=[("loss", loss), ("val_loss", val_loss)])
-    print('done validation')
-    print("Epoch {}, Loss: {}".format(epoch, sum_loss))
-    print("Epoch {}, Val Loss: {}".format(epoch, sum_val_loss))
-print(time.time()-start)
-#%%
+#     kbar.add(1, values=[("loss", loss), ("val_loss", val_loss)])
+#     print('done validation')
+#     print("Epoch {}, Loss: {}".format(epoch, sum_loss))
+#     print("Epoch {}, Val Loss: {}".format(epoch, sum_val_loss))
+# print(time.time()-start)
+# #%%
 
-#%%
-model_path = "/home/vayyar_model/svm_20200727.pt"
-torch.save(model.state_dict(), model_path)
-#%%
-import matplotlib.pyplot as plt
-fig = plt.figure()
-ax = plt.axes()
+# #%%
+# model_path = "/home/vayyar_model/svm_20200727.pt"
+# torch.save(model.state_dict(), model_path)
+# #%%
+# import matplotlib.pyplot as plt
+# fig = plt.figure()
+# ax = plt.axes()
 
-x = np.arange(0, len(train_set)*10, batch_size)
-ax.plot(x, losses[:len(x)])
-ax.plot(x, val_losses[:len(x)])
-labels = np.arange(1, 101, 10)
-plt.xticks(np.arange(min(x), max(x), (max(x))/10))
-# plt.yticks(np.arange(0, 1.1, 0.1))
-plt.title('Loss function graph')
-ax.legend(['loss', 'val_loss'])
-ax.set_xticklabels(labels)
-plt.xlabel('epoch')
-plt.ylabel('loss')
-plt.show()
+# x = np.arange(0, len(train_set)*10, batch_size)
+# ax.plot(x, losses[:len(x)])
+# ax.plot(x, val_losses[:len(x)])
+# labels = np.arange(1, 101, 10)
+# plt.xticks(np.arange(min(x), max(x), (max(x))/10))
+# # plt.yticks(np.arange(0, 1.1, 0.1))
+# plt.title('Loss function graph')
+# ax.legend(['loss', 'val_loss'])
+# ax.set_xticklabels(labels)
+# plt.xlabel('epoch')
+# plt.ylabel('loss')
+# plt.show()
 
-#%%
-model.load_state_dict(torch.load(model_path))
-for test_batch in test_loader:
-    #x_val = x_val.to(device)
-    #y_val = y_val.to(device)
+# #%%
+# model.load_state_dict(torch.load(model_path))
+# for test_batch in test_loader:
+#     #x_val = x_val.to(device)
+#     #y_val = y_val.to(device)
     
-    x_test = test_batch['image_power']
-    y_test = test_batch['label']
-    path = test_batch['path']
+#     x_test = test_batch['imagePower']
+#     y_test = test_batch['label']
+#     path = test_batch['path']
 
-    model.eval()
-    y_test_pred = model(x_test)
-    y_test_pred[y_test_pred < 0.5] = 0
-    y_test_pred[y_test_pred > 0.5] = 1
-    y_test_pred.
-    print(len(y_test_pred[y_test_pred != y_test]))
-    break
-#%% this is a one time running cell for calculating te mean standard deviation
-# mean = 0.
-# std = 0.
-# count = 0
-# for samples in loader:
-#     samples = samples['imagePower']
-#     mean += samples.mean()
-#     std += samples.std()
-#     count += 1
+#     model.eval()
+#     y_test_pred = model(x_test)
+#     y_test_pred[y_test_pred < 0.5] = 0
+#     y_test_pred[y_test_pred > 0.5] = 1
+#     y_test_pred.
+#     print(len(y_test_pred[y_test_pred != y_test]))
+#     break
+# #%% this is a one time running cell for calculating te mean standard deviation
+# # mean = 0.
+# # std = 0.
+# # count = 0
+# # for samples in loader:
+# #     samples = samples['imagePower']
+# #     mean += samples.mean()
+# #     std += samples.std()
+# #     count += 1
 
-# mean /= len(loader.dataset)/count
-# std /= len(loader.dataset)/count
-# print(f'{mean}, {std}')
+# # mean /= len(loader.dataset)/count
+# # std /= len(loader.dataset)/count
+# # print(f'{mean}, {std}')
 
 
 
-#%% Making prediction and write misclassified samples to another file
+# #%% Making prediction and write misclassified samples to another file
 
 #%% Error analysis
 #%%
@@ -201,22 +201,22 @@ import time
 custom_classifier1 = SGDClassifier(learning_rate='constant', eta0=0.01)
 custom_classifier2 = PassiveAggressiveClassifier()
 custom_classifier3 = Perceptron()
-clf_dict =  {'svm':MultiOutputClassifier(custom_classifier1),
-             'passive_aggressive': MultiOutputClassifier(custom_classifier2),
-             'perceptron': MultiOutputClassifier(custom_classifier3)
+clf_dict =  {'svm':MultiOutputClassifier(custom_classifier1)
+            #  'passive_aggressive': MultiOutputClassifier(custom_classifier2),
+            #  'perceptron': MultiOutputClassifier(custom_classifier3)
                 }
 #%%
-training_accuracy = {'svm':[],
-                     'passive_aggressive': [],
-                     'perceptron': []
+training_accuracy = {'svm':[]
+                    #  'passive_aggressive': [],
+                    #  'perceptron': []
                     }
 for i, batch in enumerate(train_loader):
     #TODO: when have CUDA:
     #x_batch = batch['imagePower'].to(device)
     #y_batch = batch['label'].to(device)
     
-    x_batch = batch['image_power'].detach().cpu().numpy()
-    x_batch = x_batch.reshape(x_batch.shape[0], x_batch.shape[1]*x_batch.shape[2])
+    x_batch = batch['imagePower'].detach().cpu().numpy()
+    x_batch = x_batch.reshape(x_batch.shape[0], x_batch.shape[1]*x_batch.shape[2]*x_batch.shape[3])
     y_batch = batch['label'].detach().cpu().numpy()
     for clf in clf_dict:
         clf_dict[clf].partial_fit(x_batch, y_batch, classes=np.array([[0, 1]] * int(y_batch.shape[1])))
@@ -227,16 +227,17 @@ for i, batch in enumerate(train_loader):
             training_accuracy[clf] = list()
             training_accuracy[clf].append(clf_dict[clf].score(x_batch, y_batch))
 
+print("finished training")
 
 #%% 
 from sklearn.metrics import accuracy_score
-val_accuracy = {'svm':[],
-                'passive_aggressive': [],
-                'perceptron': []
+val_accuracy = {'svm':[]
+                # 'passive_aggressive': [],
+                # 'perceptron': []
                 }
 for i, batch in enumerate(val_loader):
-    x_batch = batch['image_power'].detach().cpu().numpy()
-    x_batch = x_batch.reshape(x_batch.shape[0], x_batch.shape[1]*x_batch.shape[2])
+    x_batch = batch['imagePower'].detach().cpu().numpy()
+    x_batch = x_batch.reshape(x_batch.shape[0], x_batch.shape[1]*x_batch.shape[2]*x_batch.shape[3])
     y_batch = batch['label'].detach().cpu().numpy()
     for clf in clf_dict:
         clf_dict[clf].partial_fit(x_batch, y_batch, classes=np.array([[0, 1]] * int(y_batch.shape[1])))
