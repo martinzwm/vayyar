@@ -247,7 +247,7 @@ def plot_confusion_matrix(y_true, y_pred, cm, classes,
     fig_cm.tight_layout()
     return ax_cm
 
-def makeCSVFile():
+def makeVcabCSVFile():
     """
     Code to generate the csv file that will later be used to construct the custom pytorch dataset
     Works with the vCab dataset
@@ -297,6 +297,55 @@ def makeCSVFile():
     df = pd.DataFrame.from_dict(data)
     df.to_pickle('/home/vayyar_data/processed_vCab_Recordings/path_label.pickle')
 
+def makeFirstBatchCSVFile():
+    """
+    Code to generate the csv file that will later be used to construct the custom pytorch dataset
+    Works with the vCab dataset
+    """
+    import os
+    import pandas as pd
+    import json
+    from utilities import makeOccupancyLabelsWithType
+    #create dictionary with two keys: path and label, "path" indexes a list of path. "label" indexes a list of labels
+    data = {"path_original": [],
+            "label": [],
+            "processed_filename": []}
+
+    #for loop to traverse the entire dataset and append to the two lists
+    rootDir = '/home/vayyar_data/FirstBatch'
+    index = 0
+    for f in os.scandir(rootDir):
+        if f.is_dir():
+            with open(os.path.join(f.path, "test_data.json")) as labelFile:
+                labels = json.load(labelFile)
+                # occupancyLabel is a list of int
+                occupancyLabel = labels["Occupied_Seats"]
+                occupancyTypeLabel = labels["Occupant_Type"]
+            for file in os.scandir(os.path.join(f.path, "SavedVars_RF_Data")):
+                if '.mat' in file.name:
+                    try:
+                        frame  = sio.loadmat(file)
+                        imagePower = np.absolute(np.power(frame["Image"], 2))
+                        imageMaxPower = np.max(imagePower)
+                        maskG = frame["Mask"].astype(bool)
+                        allowedDropRelPeak = 5
+                        maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
+                        imagePower[~ (maskG & maskT)] = 0
+                        yLabel = makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel)
+                        processed_csv = '/home/vayyar_data/processed_FirstBatch/%s.npy' % (str(index))
+                        data["path_original"].append(file.path)
+                        data["processed_filename"].append(index)
+                        data["label"].append(yLabel)
+                        np.save(processed_csv, imagePower)
+                        index += 1
+                    except Exception as ex:
+                        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                        message = template.format(type(ex).__name__, ex.args)
+                        print(message)
+                        print(file.path)
+    df = pd.DataFrame.from_dict(data)
+    df.to_pickle('/home/vayyar_data/processed_FirstBatch/path_label.pickle')
+
 def getPreprocessedRFImage(rfImageStruct):
     """
     Apply Geometric and threshold masking to the input rf image
@@ -310,3 +359,6 @@ def getPreprocessedRFImage(rfImageStruct):
     maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
     imagePower[~ (maskG & maskT)] = 0
     return imagePower
+
+
+# %%
