@@ -175,25 +175,37 @@ def scenarioWiseTransformLabels(fifteenClassLabels):
     """
     tenClassLables: n x 15 label
     return: n x 1 labels, 
-    e.g. [0,0,1, 0,0,1, 1,0,0, 1,0,0, 0,1,0] -> [1,2,5]
+    e.g. [0,0,1, 0,0,1, 1,0,0, 1,0,0, 0,1,0] -> [1,2,5], [ADT,ADT,KID]
+         [1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0] -> empty, empty
+
     """
-    result = list()
+    result_seat = list()
+    result_type = list()
     for label in fifteenClassLabels:
-        transform_str = ""
+        seat_transform_str = ""
+        type_transform_str = ""
         for i in range(0, int(label.shape[0]), 3):
-            if (list(label[i:i+3]) == [0,0,1]) or (list(label[i:i+3]) == [0,1,0]):
-                transform_str += str(int(i/3 + 1)) #people present, append seat number
-                transform_str += ","
+            if (list(label[i:i+3]) == [0,0,1]):
+                seat_transform_str += str(int(i/3 + 1)) #people present, append seat number
+                seat_transform_str += ","
+                type_transform_str += 'ADT,'
+            elif (list(label[i:i+3]) == [0,1,0]):
+                seat_transform_str += str(int(i/3 + 1)) #people present, append seat number
+                seat_transform_str += ","
+                type_transform_str += 'KID,'
             elif (list(label[i:i+3]) == [1,0,0]):
-                transform_str += ""
                 pass
             else:
-                transform_str += str(int(i/3 + 1))
-                transform_str += ("n/a")
-                transform_str += ","
-        if not transform_str: transform_str = "empty"
-        if transform_str[-1] == ",": result.append(transform_str[:-1])  
-    return result
+                seat_transform_str += str(int(i/3 + 1))
+                seat_transform_str += ("n/a,")
+                type_transform_str += str(int(i/3 + 1))
+                type_transform_str += ("n/a,")
+        if not seat_transform_str: seat_transform_str = "empty,"
+        if not type_transform_str: type_transform_str = "empty,"
+        if seat_transform_str[-1] == ",": result_seat.append(seat_transform_str[:-1])  
+        if type_transform_str[-1] == ",": result_type.append(type_transform_str[:-1])  
+
+    return result_seat, result_type
 
 
 def getConfusionMatrices(prediction: list, truth):
