@@ -172,26 +172,7 @@ for test_batch in test_loader:
     y_test_pred.
     print(len(y_test_pred[y_test_pred != y_test]))
     break
-#%% this is a one time running cell for calculating te mean standard deviation
-# mean = 0.
-# std = 0.
-# count = 0
-# for samples in loader:
-#     samples = samples['imagePower']
-#     mean += samples.mean()
-#     std += samples.std()
-#     count += 1
-
-# mean /= len(loader.dataset)/count
-# std /= len(loader.dataset)/count
-# print(f'{mean}, {std}')
-
-
-
-# #%% Making prediction and write misclassified samples to another file
-
-#%% Error analysis
-#%%
+#%% This is the sklearn SVM approach 
 from sklearn.linear_model.stochastic_gradient import SGDClassifier
 from sklearn.linear_model import SGDClassifier
 from sklearn.linear_model import PassiveAggressiveClassifier
