@@ -55,7 +55,7 @@ test_loader = DataLoader(
     shuffle=True
 )
 print("finished loaders")
-# #%% Training the SVM on pytorch
+#%% Training the SVM on pytorch
 import time
 start = time.time()
 learning_rate = 0.1  # Learning rate
@@ -95,6 +95,7 @@ train_step = make_train_step(model, hinge_loss, optimizer)
 train_per_epoch = int(len(train_set) / batch_size)
 
 for epoch in range(n_epochs):
+    print(epoch)
     sum_loss = 0
     sum_val_loss = 0
     kbar = pkbar.Kbar(target=train_per_epoch, width=8)
@@ -103,8 +104,9 @@ for epoch in range(n_epochs):
         #x_batch = batch['imagePower'].to(device)
         #y_batch = batch['label'].to(device)
 
-        x_batch = batch['imagePower']
+        x_batch = batch['imagePower'].float()
         y_batch = batch['label']
+        print(x_batch.type())
     
         loss = train_step(x_batch, y_batch)
         sum_loss += loss
@@ -117,7 +119,7 @@ for epoch in range(n_epochs):
             #x_val = x_val.to(device)
             #y_val = y_val.to(device)
             
-            x_val = val_batch['imagePower']
+            x_val = val_batch['imagePower'].float()
             y_val = val_batch['label']
 
             model.eval()
@@ -132,10 +134,9 @@ for epoch in range(n_epochs):
     print("Epoch {}, Loss: {}".format(epoch, sum_loss))
     print("Epoch {}, Val Loss: {}".format(epoch, sum_val_loss))
 print(time.time()-start)
-#%%
 
 #%%
-model_path = "/home/vayyar_model/svm_20200727.pt"
+model_path = "/home/vayyar_model/svm_20200804.pt"
 torch.save(model.state_dict(), model_path)
 #%%
 import matplotlib.pyplot as plt
@@ -221,11 +222,16 @@ val_accuracy = {'svm':[],
                 'passive_aggressive': [],
                 'perceptron': []
                 }
+for clf in clf_dict:
+    print(f'{clf}_misclassified_firstBatch.csv')
+    f = open(f'{clf}_misclassified_firstBatch.csv', 'w')
+    f.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type\n']))
+    f.close()
 for i, batch in enumerate(val_loader):
     x_batch = batch['imagePower'].detach().cpu().numpy()
     x_batch = x_batch.reshape(x_batch.shape[0], x_batch.shape[1]*x_batch.shape[2]*x_batch.shape[3])
     y_batch = batch['label'].detach().cpu().numpy()
-    path = np.array(batch['path'])
+    path = np.array(batch['path'])        
     for clf in clf_dict:
         loaded_model = pickle.load(open(f'{clf}_FirstBatch.pickle', 'rb'))
         misclassified_dict = dict()
@@ -239,15 +245,12 @@ for i, batch in enumerate(val_loader):
         loaded_model.partial_fit(x_batch, y_batch, classes=np.array([[0, 1]] * int(y_batch.shape[1])))
         y_pred = loaded_model.predict(x_batch)
         misclassified_indice = np.where((y_pred!=y_batch).any(1))
-        if i == 0:
-            f = open(f'{clf}_misclassified_firstBatch.csv', 'w')
-            f.write(','.join(misclassified_dict.keys()))
         if len(misclassified_indice[0]) != 0:
             misclassified_dict['path'] = list(path[misclassified_indice])
             misclassified_dict['predicted_seat'], misclassified_dict['predicted_type'] = scenarioWiseTransformLabels(y_pred[misclassified_indice])
             misclassified_dict['label_seat'], misclassified_dict['label_type'] = scenarioWiseTransformLabels(y_batch[misclassified_indice])
             df = pd.DataFrame.from_dict(misclassified_dict)
-            df.to_csv(f'{clf}_misclassified_firstBatch.csv', mode='a', header=False)
+            df.to_csv(f'{clf}_misclassified_firstBatch.csv', mode='a', header=False, index=False)
         try:
             val_accuracy[clf].append(accuracy_score(y_pred, y_batch))
         except:

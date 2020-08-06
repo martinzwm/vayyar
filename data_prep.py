@@ -37,7 +37,7 @@ class vCabDataSet(Dataset):
         if self.transform:
             image_power = self.transform(image_power)
         label = self.path_label.iloc[idx, 1]
-        sample = {'imagePower':image_power, 'label':label, 'path':rfImagePath}
+        sample = {'imagePower':image_power, 'label':label, 'path':self.path_label.iloc[idx, 0]}
         return sample
 
 class cropR(object):
@@ -94,6 +94,7 @@ def calculateMeanStd(rootDir):
     var /= count_var
     std = torch.sqrt(var)
     print(f'mean: {mean}, standard deviation: {std}')
+    return mean.item(), std.item()
 
 def verifyNormalization(rootDir, image_mean, image_std):
     torch.manual_seed(0)
@@ -104,12 +105,12 @@ def verifyNormalization(rootDir, image_mean, image_std):
                                  std=[image_std])
         ])
     dataset = vCabDataSet(rootDir, transform=transform)
-    # subset_percent = 0.1
-    # subset_num = int(subset_percent * len(dataset))
-    # print(f'Tested on {subset_num} samples.')
-    # random.seed(1)
-    # subset_indices = random.sample(range(0, len(dataset)), subset_num)
-    # subset = Subset(dataset, subset_indices)
+    subset_percent = 0.8
+    subset_num = int(subset_percent * len(dataset))
+    print(f'Tested on {subset_num} samples.')
+    random.seed(1)
+    subset_indices = random.sample(range(0, len(dataset)), subset_num)
+    subset = Subset(dataset, subset_indices)
     
     train_percent = 0.9
     validation_percent = 0.05
@@ -123,7 +124,7 @@ def verifyNormalization(rootDir, image_mean, image_std):
     
     batch_size = 512
     dataset_loader = DataLoader(
-        train_set,
+        subset,
         batch_size=batch_size,
         num_workers=8,
         shuffle=False
