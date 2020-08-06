@@ -9,6 +9,7 @@ import torch
 from utilities import loadmat
 from torchvision import transforms
 import random
+import sys
 
 
 def firstBatchdataPrep():
@@ -60,19 +61,9 @@ def calculateMeanStd(rootDir):
                 cropR(24),
             ])
     dataset = vCabDataSet(rootDir, transform)
-    train_percent = 0.9
-    validation_percent = 0.05
-    testing_percent = 0.05
-    total_num = len(dataset)
-    training_num = int(train_percent * total_num)
-    validation_num = int(validation_percent * total_num)
-    testing_num = int(total_num - training_num - validation_num)
-    train_set, val_set, test_set = random_split(dataset, [training_num, validation_num, testing_num])
-
-    
     batch_size = 512
     dataset_loader = DataLoader(
-        train_set,
+        dataset,
         batch_size=batch_size,
         num_workers=8,
         shuffle=False
@@ -112,16 +103,6 @@ def verifyNormalization(rootDir, image_mean, image_std):
     subset_indices = random.sample(range(0, len(dataset)), subset_num)
     subset = Subset(dataset, subset_indices)
     
-    train_percent = 0.9
-    validation_percent = 0.05
-    testing_percent = 0.05
-    total_num = len(dataset)
-    training_num = int(train_percent * total_num)
-    validation_num = int(validation_percent * total_num)
-    testing_num = int(total_num - training_num - validation_num)
-    train_set, val_set, test_set = random_split(dataset, [training_num, validation_num, testing_num])
-
-    
     batch_size = 512
     dataset_loader = DataLoader(
         subset,
@@ -148,6 +129,30 @@ def verifyNormalization(rootDir, image_mean, image_std):
     std = torch.sqrt(var)
     print(f'mean: {mean}, standard deviation: {std}')
 
+# %%
+def findMinAndMax(rootDir):
+    torch.manual_seed(0)
+    transform = transforms.Compose([
+            cropR(24),
+            transforms.ToTensor(),
+        ])
+    dataset = vCabDataSet(rootDir, transform=transform)
+    batch_size = 512
+    dataset_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=8,
+        shuffle=False
+    )
 
+    min_val = sys.maxsize
+    max_val = -sys.maxsize
+    for samples in dataset_loader:
+        samples = samples['imagePower']
+        sample_min = torch.min(samples)
+        sample_max = torch.max(samples)
+        if sample_min < min_val: min_val = sample_min
+        if sample_max > max_val: max_val = sample_max
+    print(f'min value: {min_val}, max value: {max_val}')
 
 # %%
