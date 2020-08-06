@@ -18,10 +18,10 @@ torch.manual_seed(0)
 transform = transforms.Compose([
             cropR(24),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[7.608346462249756],
-                                 std=[6.10889196395874])
+            transforms.Normalize(mean=[1.655461726353112e-06],
+                                 std=[1.3920989854294221e-05])
         ])
-dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
+dataset = vCabDataSet('/home/vayyar_data/processed_FirstBatch', transform)
 
 #%% Split training and testing dataset
 train_percent = 0.9
@@ -55,7 +55,7 @@ test_loader = DataLoader(
     shuffle=True
 )
 print("finished loaders")
-#%% Training the SVM pytorch approach
+#%% Training the SVM on pytorch
 import time
 start = time.time()
 learning_rate = 0.1  # Learning rate
@@ -95,6 +95,7 @@ train_step = make_train_step(model, hinge_loss, optimizer)
 train_per_epoch = int(len(train_set) / batch_size)
 
 for epoch in range(n_epochs):
+    print(epoch)
     sum_loss = 0
     sum_val_loss = 0
     kbar = pkbar.Kbar(target=train_per_epoch, width=8)
@@ -103,8 +104,9 @@ for epoch in range(n_epochs):
         #x_batch = batch['imagePower'].to(device)
         #y_batch = batch['label'].to(device)
 
-        x_batch = batch['imagePower']
+        x_batch = batch['imagePower'].float()
         y_batch = batch['label']
+        print(x_batch.type())
     
         loss = train_step(x_batch, y_batch)
         sum_loss += loss
@@ -117,7 +119,7 @@ for epoch in range(n_epochs):
             #x_val = x_val.to(device)
             #y_val = y_val.to(device)
             
-            x_val = val_batch['imagePower']
+            x_val = val_batch['imagePower'].float()
             y_val = val_batch['label']
 
             model.eval()
@@ -134,7 +136,7 @@ for epoch in range(n_epochs):
 print(time.time()-start)
 
 #%%
-model_path = "/home/vayyar_model/svm_20200727.pt"
+model_path = "/home/vayyar_model/svm_20200804.pt"
 torch.save(model.state_dict(), model_path)
 #%%
 import matplotlib.pyplot as plt
@@ -171,7 +173,8 @@ for test_batch in test_loader:
     y_test_pred.
     print(len(y_test_pred[y_test_pred != y_test]))
     break
-#%% This is the sklearn SVM approach 
+
+#%% This is the sklearn SVM appoach
 from sklearn.linear_model.stochastic_gradient import SGDClassifier
 from sklearn.linear_model import SGDClassifier
 from sklearn.linear_model import PassiveAggressiveClassifier
@@ -209,11 +212,10 @@ for i, batch in enumerate(train_loader):
             training_accuracy[clf].append(clf_dict[clf].score(x_batch, y_batch))
 # save the model to disk
 for clf in clf_dict:
-    filename = f'{clf}_vcab.pickle'
+    filename = f'{clf}_FirstBatch.pickle'
     pickle.dump(clf_dict[clf], open(filename, 'wb'))
 print("finished training")
 
-#%% 
 #%% 
 from sklearn.metrics import accuracy_score
 val_accuracy = {'svm':[],
@@ -221,8 +223,8 @@ val_accuracy = {'svm':[],
                 'perceptron': []
                 }
 for clf in clf_dict:
-    print(f'{clf}_misclassified_Vcab.csv')
-    f = open(f'{clf}_misclassified_Vcab.csv', 'w')
+    print(f'{clf}_misclassified_firstBatch.csv')
+    f = open(f'{clf}_misclassified_firstBatch.csv', 'w')
     f.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type\n']))
     f.close()
 for i, batch in enumerate(val_loader):
@@ -231,7 +233,7 @@ for i, batch in enumerate(val_loader):
     y_batch = batch['label'].detach().cpu().numpy()
     path = np.array(batch['path'])        
     for clf in clf_dict:
-        loaded_model = pickle.load(open(f'{clf}_Vcab.pickle', 'rb'))
+        loaded_model = pickle.load(open(f'{clf}_FirstBatch.pickle', 'rb'))
         misclassified_dict = dict()
         misclassified_dict = {
             'path': [],
@@ -248,7 +250,7 @@ for i, batch in enumerate(val_loader):
             misclassified_dict['predicted_seat'], misclassified_dict['predicted_type'] = scenarioWiseTransformLabels(y_pred[misclassified_indice])
             misclassified_dict['label_seat'], misclassified_dict['label_type'] = scenarioWiseTransformLabels(y_batch[misclassified_indice])
             df = pd.DataFrame.from_dict(misclassified_dict)
-            df.to_csv(f'{clf}_misclassified_Vcab.csv', mode='a', header=False, index=False)
+            df.to_csv(f'{clf}_misclassified_firstBatch.csv', mode='a', header=False, index=False)
         try:
             val_accuracy[clf].append(accuracy_score(y_pred, y_batch))
         except:
