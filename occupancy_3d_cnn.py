@@ -12,51 +12,62 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
 import torch
+from torch.utils.data import Dataset, DataLoader, random_split
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import *
 from utilities import importDataFromMatFiles, loadData
 from models import CNNModel
+from torchvision import transforms
+from data_prep import vCabDataSet, cropR
 
-#%%
-importDir = "/home/vayyar_data/FirstBatch"
-x, y = importDataFromMatFiles(importDir)
+#%% Import FirstBatch dataset
+transform = transforms.Compose([
+            cropR(24),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[1.655461726353112e-06],
+                                 std=[1.3920989854294221e-05])
+        ])
+dataset = vCabDataSet('/home/vayyar_data/processed_FirstBatch', transform)
 
-# x = loadData("/Users/jameshe/Documents/radar_ura/vayyar/x.pickle")
-# y = loadData("/Users/jameshe/Documents/radar_ura/vayyar/y.pickle")
-#%%
-print(x.shape)
-x_shape_dim0 = x.shape[0]
-x_shape_dim1 = x.shape[1]
-x_shape_dim2 = x.shape[2]
-x_shape_dim3 = x.shape[3]
-x = np.reshape(x, (x_shape_dim0, x_shape_dim1 * x_shape_dim2 * x_shape_dim3))
-scaler = StandardScaler()
-scaler.fit(x)
-x = scaler.transform(x)
-x = np.reshape(x, (x_shape_dim0, x_shape_dim1, x_shape_dim2, x_shape_dim3))
-#%%
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
+#%% Split training and testing dataset
+train_percent = 0.9
+validation_percent = 0.05
+testing_percent = 0.05
+total_num = len(dataset)
+training_num = int(train_percent * total_num)
+validation_num = int(validation_percent * total_num)
+testing_num = int(total_num - training_num - validation_num)
 
-x_train = torch.from_numpy(x_train).float()
-y_train = torch.from_numpy(y_train).float()
-x_test = torch.from_numpy(x_test).float()
-y_test = torch.from_numpy(y_test).float()
-batch_size = 128 
+train_set, val_set, test_set = random_split(dataset, [training_num, validation_num, testing_num])
 
-# Pytorch train and test sets
-train = torch.utils.data.TensorDataset(x_train,y_train)
-test = torch.utils.data.TensorDataset(x_test,y_test)
-
-# data loader
-train_loader = torch.utils.data.DataLoader(train, batch_size = batch_size, shuffle = True)
-test_loader = torch.utils.data.DataLoader(test, batch_size = batch_size, shuffle = True)
+# %%
+batch_size = 512
+train_loader = DataLoader(
+    train_set,
+    batch_size=batch_size,
+    num_workers=8,
+    shuffle=True
+)
+val_loader = DataLoader(
+    val_set,
+    batch_size=batch_size,
+    num_workers=8,
+    shuffle=True
+)
+test_loader = DataLoader(
+    test_set,
+    batch_size=batch_size,
+    num_workers=8,
+    shuffle=True
+)
+print("finished loaders")
 #%%
 #Definition of hyperparameters
-
 start = time.time()
-num_classes = 5
+model_name = "/home/vayyar_model/first_batch_cnn_20200807.pt"
+num_classes = 15
 num_epochs = 10
 # Create CNN
 model = CNNModel(num_classes)
@@ -66,16 +77,17 @@ print(model)
 
 # Binary Cross Entropy Loss for MultiLabel Classfication
 error = nn.BCELoss()
-
 learning_rate = 0.001
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
+#%%
 # CNN model training
 loss_list = []
 iteration_count = 0
 for epoch in range(num_epochs):
-    for i, (images, labels) in enumerate(train_loader):
-        train = Variable(images.view(len(images), 1, 29 ,29 ,64))
+    for i, (sample) in enumerate(train_loader):
+        images = sample["imagePower"].float()
+        labels = sample["label"].float()
+        train = Variable(images.view(len(images), 1, 29 ,29 ,24))
         labels = Variable(labels)
         # Clear gradients
         optimizer.zero_grad()
@@ -90,17 +102,19 @@ for epoch in range(num_epochs):
         loss_list.append(loss.data)
         iteration_count += 1
         print(f'Epoch {epoch + 1} Iteration {iteration_count}: loss = {loss.data}')
-torch.save(model.state_dict(), "/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt")
+torch.save(model.state_dict(), model_name)
 end = time.time()
 print(f'duration = {end - start}s')
 # %%
-model = CNNModel(5)
-model.load_state_dict(torch.load("/Users/jameshe/Documents/radar_ura/vayyar/core_code/occupancy_3d_cnn_model.pt"))
+model = CNNModel(num_classes)
+model.load_state_dict(torch.load(model_name))
 model.eval()
 
 predictions = []
 complete_labels = []
-for images, labels in train_loader:
+for sample in train_loader:
+    images = sample["imagePower"].float()
+    labels = sample["label"].float()
     train = Variable(images.view(len(images), 1, 29 ,29 ,64))
     outputs = model(train)
     outputs[outputs < 0.5] = 0

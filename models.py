@@ -28,7 +28,7 @@ class CNNModel(nn.Module):
         super(CNNModel, self).__init__()
         self.conv_layer1 = self._conv_layer_set(1, 32)
         self.conv_layer2 = self._conv_layer_set(32, 64)
-        self.fc1 = nn.Linear(22400, 128)
+        self.fc1 = nn.Linear(6400, 128)
         self.fc2 = nn.Linear(128, num_classes)
         self.relu = nn.LeakyReLU()
         self.batch=nn.BatchNorm1d(128)
@@ -36,9 +36,6 @@ class CNNModel(nn.Module):
         self.sigmoid = nn.Sigmoid()               
         
     def _conv_layer_set(self, in_c, out_c):
-        print(in_c)
-        print('--------')
-        print(out_c)
         conv_layer = nn.Sequential(
         nn.Conv3d(in_c, out_c, kernel_size=(3, 3, 3), padding=0),
         nn.LeakyReLU(),
