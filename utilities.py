@@ -110,12 +110,7 @@ def importDataOccupancyType(rootDir):
             for file in os.scandir(os.path.join(f.path, "SavedVars_RF_Data")):
                 if '.mat' in file.name:
                     frame  = sio.loadmat(file)
-                    imagePower = np.absolute(np.power(frame["Image"], 2))
-                    imageMaxPower = np.max(imagePower)
-                    maskG = frame["Mask"].astype(bool)
-                    allowedDropRelPeak = 5
-                    maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
-                    imagePower[~ (maskG & maskT)] = 0
+                    imagePower = getPreprocessedRFImage(frame["Image"], frame["Mask"])
                     xList.append(imagePower)
                     yLabel = makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel)
                     yList.append(yLabel)
@@ -291,12 +286,12 @@ def makeVcabCSVFile():
                                     for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
                                         if file.name.endswith('.mat'):
                                             try:
-                                                processed_csv = '/home/vayyar_data/processed_vCab_Recordings/%s.npy' % (str(index))
+                                                processed_csv = '/home/vayyar_data/processed_vCab_Recordings_nonthreshold/%s.npy' % (str(index))
                                                 data["path_original"].append(file.path)
                                                 data["processed_filename"].append(index)
                                                 data["label"].append(makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel))
                                                 rfImageStruct = loadmat(file.path)['rfImageStruct']
-                                                imagePower = getPreprocessedRFImage(rfImageStruct)
+                                                imagePower = getPreprocessedRFImage(rfImageStruct['image_DxDyR'], rfImageStruct['mask'])
                                                 np.save(processed_csv, imagePower)
                                                 index += 1
                                             except Exception as ex:
@@ -307,7 +302,7 @@ def makeVcabCSVFile():
     #create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
     #each row will contain info for a sample
     df = pd.DataFrame.from_dict(data)
-    df.to_pickle('/home/vayyar_data/processed_vCab_Recordings/path_label.pickle')
+    df.to_pickle('/home/vayyar_data/processed_vCab_Recordings_nonthreshold/path_label.pickle')
 
 def makeFirstBatchCSVFile():
     """
@@ -337,14 +332,9 @@ def makeFirstBatchCSVFile():
                 if '.mat' in file.name:
                     try:
                         frame  = sio.loadmat(file)
-                        imagePower = np.absolute(np.power(frame["Image"], 2))
-                        imageMaxPower = np.max(imagePower)
-                        maskG = frame["Mask"].astype(bool)
-                        allowedDropRelPeak = 5
-                        maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
-                        imagePower[~ (maskG & maskT)] = 0
+                        imagePower = getPreprocessedRFImage(frame["Image"], frame["Mask"])
                         yLabel = makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel)
-                        processed_csv = '/home/vayyar_data/processed_FirstBatch/%s.npy' % (str(index))
+                        processed_csv = '/home/vayyar_data/processed_FirstBatch_nonthreshold/%s.npy' % (str(index))
                         data["path_original"].append(file.path)
                         data["processed_filename"].append(index)
                         data["label"].append(yLabel)
@@ -356,20 +346,21 @@ def makeFirstBatchCSVFile():
                         print(message)
                         print(file.path)
     df = pd.DataFrame.from_dict(data)
-    df.to_pickle('/home/vayyar_data/processed_FirstBatch/path_label.pickle')
+    df.to_pickle('/home/vayyar_data/processed_FirstBatch_nonthreshold/path_label.pickle')
 
-def getPreprocessedRFImage(rfImageStruct):
+def getPreprocessedRFImage(rfImage, mask, threshold=True):
     """
     Apply Geometric and threshold masking to the input rf image
     Then take the magnitude of the complex values.
     convert data type to float32
     """
-    imagePower = np.absolute(np.power(rfImageStruct['image_DxDyR'], 2)).astype('float32')
-    imageMaxPower = np.max(imagePower)
-    maskG = rfImageStruct["mask"].astype(bool)
-    allowedDropRelPeak = 5
-    maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
-    imagePower[~ (maskG & maskT)] = 0
+    imagePower = np.absolute(np.power(rfImage, 2)).astype('float32')
+    maskG = mask.astype(bool)
+    if threshold == True:
+        imageMaxPower = np.max(imagePower)
+        allowedDropRelPeak = 5
+        maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
+    imagePower[~ (maskG)] = 0
     return imagePower
 
 
