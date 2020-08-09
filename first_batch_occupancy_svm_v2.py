@@ -14,7 +14,7 @@ import pkbar
 from sklearn.multioutput import MultiOutputClassifier
 import pickle
 torch.manual_seed(0)
-#%% Import vCab_Recordings dataset
+#%% Import dataset
 transform = transforms.Compose([
             cropR(24),
             transforms.ToTensor(),
