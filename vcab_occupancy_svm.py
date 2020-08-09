@@ -221,7 +221,6 @@ val_accuracy = {'svm':[],
                 'perceptron': []
                 }
 for clf in clf_dict:
-    print(f'{clf}_misclassified_Vcab.csv')
     f = open(f'{clf}_misclassified_Vcab.csv', 'w')
     f.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type\n']))
     f.close()
