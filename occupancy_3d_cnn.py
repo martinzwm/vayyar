@@ -24,9 +24,18 @@ from data_prep import vCabDataSet, cropR
 import pkbar
 import math
 from torch.utils.tensorboard import SummaryWriter
+import argparse
+
 #%%
 writer = SummaryWriter()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+parser = argparse.ArgumentParser()
+parser.add_argument('-m', '--model_name', help='name of the model', required=True)
+parser.add_argument('-d', '--mis_data_filename', help='misclassified data name', required=True,)
+
+args = vars(parser.parse_args())
+model_name = args['model_name']
+misclassified_filename = args['mis_data_filename']
 #%% Import dataset
 
 #first batch
@@ -83,7 +92,7 @@ print("finished loaders")
 #%%
 #Definition of hyperparameters
 start = time.time()
-model_name = "/home/vayyar_model/vCab_Recordings_cnn_20200807.pt"
+# model_name = "/home/vayyar_model/vCab_Recordings_cnn_20200807.pt"
 # model_name = "/home/vayyar_model/first_batch_cnn_20200807.pt"
 num_classes = 15
 num_epochs = 10
@@ -167,7 +176,7 @@ model.eval()
 test_per_epoch = math.ceil(len(test_set) / batch_size)
 accuracy = []
 
-f = open('cnn_misclassified_vCab_Recordings.csv', 'w')
+f = open(misclassified_filename, 'w')
 f.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type\n']))
 f.close()
 for sample in test_loader:
@@ -194,7 +203,7 @@ for sample in test_loader:
         misclassified_dict['predicted_seat'], misclassified_dict['predicted_type'] = scenarioWiseTransformLabels(outputs[misclassified_indice])
         misclassified_dict['label_seat'], misclassified_dict['label_type'] = scenarioWiseTransformLabels(y_test[misclassified_indice])
         df = pd.DataFrame.from_dict(misclassified_dict)
-        df.to_csv('cnn_misclassified_vCab_Recordings.csv', mode='a', header=False, index=False)
+        df.to_csv(misclassified_filename, mode='a', header=False, index=False)
     
 acc = np.average(np.array(accuracy))
 print(f'Testing accuracy is {acc}.')
