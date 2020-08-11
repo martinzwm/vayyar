@@ -26,7 +26,7 @@ import math
 from torch.utils.tensorboard import SummaryWriter
 #%%
 writer = SummaryWriter()
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #%% Import dataset
 
 #first batch
@@ -111,8 +111,8 @@ for epoch in range(num_epochs):
     sum_val_loss = 0
     kbar = pkbar.Kbar(target=train_per_epoch, width=8)
     for i, sample in enumerate(train_loader):
-        x_train = sample["imagePower"].float()
-        y_train = sample["label"].float()
+        x_train = sample["imagePower"].float().to(device)
+        y_train = sample["label"].float().to(device)
         x_train = Variable(x_train.view(len(x_train), 1, 29 ,29 ,24))
         y_train = Variable(y_train)
         # Clear gradients
