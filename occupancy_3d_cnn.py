@@ -136,8 +136,8 @@ for epoch in range(num_epochs):
     with torch.no_grad():
         for val_batch in val_loader:
             
-            x_val = val_batch['imagePower'].float()
-            y_val = val_batch['label'].float()
+            x_val = val_batch['imagePower'].float().to(device)
+            y_val = val_batch['label'].float().to(device)
             x_val = Variable(x_val.view(len(x_val), 1, 29 ,29 ,24))
             y_val = Variable(y_val)
 
@@ -171,8 +171,8 @@ f = open('cnn_misclassified_vCab_Recordings.csv', 'w')
 f.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type\n']))
 f.close()
 for sample in test_loader:
-    x_test = sample["imagePower"].float()
-    y_test = sample["label"].float()
+    x_test = sample["imagePower"].float().to(device)
+    y_test = sample["label"].float().to(device)
     path = np.array(sample['path'])    
     train = Variable(x_test.view(len(x_test), 1, 29 ,29 ,24))
     outputs = model(train)
