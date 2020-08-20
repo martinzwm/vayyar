@@ -254,7 +254,7 @@ def plot_confusion_matrix(y_true, y_pred, cm, classes,
     fig_cm.tight_layout()
     return ax_cm
 
-def makeVcabCSVFile():
+def makeVcabCSVFile(remove_clutter=True):
     """
     Code to generate the csv file that will later be used to construct the custom pytorch dataset
     Works with the vCab dataset
@@ -283,15 +283,23 @@ def makeVcabCSVFile():
                                     labels = json.load(labelFile)
                                     occupancyLabel = labels["Occupied_Seats"]
                                     occupancyTypeLabel = labels["Occupant_Type"]
+                                    first_frame_path = os.path.join(minuteLevelItem.path, "rfImages", "001")
+                                    first_rfImage_struct = loadmat(first_frame_path)['rfImageStruct']
+                                    first_frame = getPreprocessedRFImage(first_rfImage_struct['image_DxDyR'], first_rfImage_struct['mask'])
                                     for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
                                         if file.name.endswith('.mat'):
                                             try:
-                                                processed_csv = '/home/vayyar_data/processed_vCab_Recordings_nonthreshold/%s.npy' % (str(index))
+                                                rfImageStruct = loadmat(file.path)['rfImageStruct']
+                                                imagePower = getPreprocessedRFImage(rfImageStruct['image_DxDyR'], rfImageStruct['mask'])
+                                                if remove_clutter == True:
+                                                    if '001' in file.name:
+                                                        continue
+                                                    else:
+                                                        imagePower = np.subtract(imagePower, first_frame)
                                                 data["path_original"].append(file.path)
                                                 data["processed_filename"].append(index)
                                                 data["label"].append(makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel))
-                                                rfImageStruct = loadmat(file.path)['rfImageStruct']
-                                                imagePower = getPreprocessedRFImage(rfImageStruct['image_DxDyR'], rfImageStruct['mask'])
+                                                processed_csv = '/home/vayyar_data/processed_vCab_Recordings_clutter_removed/%s.npy' % (str(index))
                                                 np.save(processed_csv, imagePower)
                                                 index += 1
                                             except Exception as ex:
@@ -302,7 +310,7 @@ def makeVcabCSVFile():
     #create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
     #each row will contain info for a sample
     df = pd.DataFrame.from_dict(data)
-    df.to_pickle('/home/vayyar_data/processed_vCab_Recordings_nonthreshold/path_label.pickle')
+    df.to_pickle('/home/vayyar_data/processed_vCab_Recordings_clutter_removed/path_label.pickle')
 
 def makeFirstBatchCSVFile():
     """
