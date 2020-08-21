@@ -51,10 +51,10 @@ misclassified_filename = args['mis_data_filename']
 transform = transforms.Compose([
             cropR(24),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[7.608346462249756],
-                                 std=[6.10889196395874])
+            transforms.Normalize(mean=[-0.05493089184165001],
+                                 std=[0.035751599818468094])
         ])
-dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
+dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_removed', transform)
 
 
 #%% Split training and testing dataset
