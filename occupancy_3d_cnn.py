@@ -48,13 +48,21 @@ misclassified_filename = args['mis_data_filename']
 # dataset = vCabDataSet('/home/vayyar_data/processed_FirstBatch', transform)
 
 #vcab_recordings
+# transform = transforms.Compose([
+#             cropR(24),
+#             transforms.ToTensor(),
+#             transforms.Normalize(mean=[-0.05493089184165001],
+#                                  std=[0.035751599818468094])
+#         ])
+# dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_removed', transform)
+
 transform = transforms.Compose([
             cropR(24),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[-0.05493089184165001],
-                                 std=[0.035751599818468094])
+            transforms.Normalize(mean=[7.608346462249756],
+                                 std=[6.12775993347168])
         ])
-dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_removed', transform)
+dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
 
 
 #%% Split training and testing dataset
@@ -105,7 +113,8 @@ print(model)
 # Binary Cross Entropy Loss for MultiLabel Classfication
 error = nn.BCELoss()
 # learning_rate = 0.001 #FirstBatch
-learning_rate = 0.0001 #Vcab_Recordings
+# learning_rate = 0.0001 #Vcab_Recordings with clutter removal
+learning_rate = 0.00005 #Vcab_Recordings
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 #%%
 # CNN model training
@@ -165,6 +174,7 @@ for epoch in range(num_epochs):
     print("Epoch {}, Val Loss: {}".format(epoch+1, sum_val_loss/val_per_epoch))
 writer.flush()
 writer.close()
+#%%
 torch.save(model.state_dict(), model_name)
 end = time.time()
 print(f'duration = {end - start}s')
@@ -176,9 +186,12 @@ model.eval()
 test_per_epoch = math.ceil(len(test_set) / batch_size)
 accuracy = []
 
-f = open(misclassified_filename, 'w')
-f.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type\n']))
-f.close()
+f1 = open('all_cnn_arch1.csv', 'w')
+f2 = open(misclassified_filename, 'w')
+f1.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type', 'seat_prediction_result', 'type_prediction_result\n']))
+f2.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type', 'seat_prediction_result', 'type_prediction_result\n']))
+f1.close()
+f2.close()
 for sample in test_loader:
     x_test = sample["imagePower"].float().to(device)
     y_test = sample["label"].float().to(device)
@@ -190,21 +203,22 @@ for sample in test_loader:
     outputs = outputs.detach().numpy()
     y_test = y_test.detach().numpy()
     accuracy.append(accuracy_score(y_test, outputs))
-    misclassified_dict = {
+    test_dict = {
         'path': [],
         'label_seat': [],
         'predicted_seat':[],
         'label_type': [],
         'predicted_type': []
     }
-    misclassified_indice = np.where((outputs!=y_test).any(1))
-    if len(misclassified_indice[0]) != 0:
-        misclassified_dict['path'] = list(path[misclassified_indice])
-        misclassified_dict['predicted_seat'], misclassified_dict['predicted_type'] = scenarioWiseTransformLabels(outputs[misclassified_indice])
-        misclassified_dict['label_seat'], misclassified_dict['label_type'] = scenarioWiseTransformLabels(y_test[misclassified_indice])
-        df = pd.DataFrame.from_dict(misclassified_dict)
-        df.to_csv(misclassified_filename, mode='a', header=False, index=False)
-    
+    test_dict['path'] = list(path)
+    test_dict['predicted_seat'], test_dict['predicted_type'] = scenarioWiseTransformLabels(outputs)
+    test_dict['label_seat'], test_dict['label_type'] = scenarioWiseTransformLabels(y_test)
+    df = pd.DataFrame.from_dict(test_dict)
+    df['seat_prediction_result'] = np.where(df['label_seat'] == df['predicted_seat'], True, False)
+    df['type_prediction_result'] = np.where(df['label_type'] == df['predicted_type'], True, False)
+    mis_df = df.loc[(df['seat_prediction_result'] == False) | (df['type_prediction_result'] == False)]
+    df.to_csv('all_cnn.csv', mode='a', header=False, index=False)
+    mis_df.to_csv(misclassified_filename, mode='a', header=False, index=False)
 acc = np.average(np.array(accuracy))
 print(f'Testing accuracy is {acc}.')
 
