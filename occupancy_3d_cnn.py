@@ -114,7 +114,7 @@ print(model)
 error = nn.BCELoss()
 # learning_rate = 0.001 #FirstBatch
 # learning_rate = 0.0001 #Vcab_Recordings with clutter removal
-learning_rate = 0.00005 #Vcab_Recordings
+learning_rate = 0.005 #Vcab_Recordings
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 #%%
 # CNN model training
@@ -174,7 +174,6 @@ for epoch in range(num_epochs):
     print("Epoch {}, Val Loss: {}".format(epoch+1, sum_val_loss/val_per_epoch))
 writer.flush()
 writer.close()
-#%%
 torch.save(model.state_dict(), model_name)
 end = time.time()
 print(f'duration = {end - start}s')
@@ -186,7 +185,7 @@ model.eval()
 test_per_epoch = math.ceil(len(test_set) / batch_size)
 accuracy = []
 
-f1 = open('all_cnn_arch1.csv', 'w')
+f1 = open('all_cnn_arch2.csv', 'w')
 f2 = open(misclassified_filename, 'w')
 f1.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type', 'seat_prediction_result', 'type_prediction_result\n']))
 f2.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type', 'seat_prediction_result', 'type_prediction_result\n']))
@@ -217,7 +216,7 @@ for sample in test_loader:
     df['seat_prediction_result'] = np.where(df['label_seat'] == df['predicted_seat'], True, False)
     df['type_prediction_result'] = np.where(df['label_type'] == df['predicted_type'], True, False)
     mis_df = df.loc[(df['seat_prediction_result'] == False) | (df['type_prediction_result'] == False)]
-    df.to_csv('all_cnn.csv', mode='a', header=False, index=False)
+    df.to_csv('all_cnn_arch2.csv', mode='a', header=False, index=False)
     mis_df.to_csv(misclassified_filename, mode='a', header=False, index=False)
 acc = np.average(np.array(accuracy))
 print(f'Testing accuracy is {acc}.')
