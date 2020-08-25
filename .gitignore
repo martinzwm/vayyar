@@ -2,3 +2,7 @@
 *.hdf5
 *.pt
 *.pyc
+*.pickle
+*.csv
+*.xlsx
+runs/

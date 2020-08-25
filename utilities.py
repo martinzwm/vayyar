@@ -110,12 +110,7 @@ def importDataOccupancyType(rootDir):
             for file in os.scandir(os.path.join(f.path, "SavedVars_RF_Data")):
                 if '.mat' in file.name:
                     frame  = sio.loadmat(file)
-                    imagePower = np.absolute(np.power(frame["Image"], 2))
-                    imageMaxPower = np.max(imagePower)
-                    maskG = frame["Mask"].astype(bool)
-                    allowedDropRelPeak = 5
-                    maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
-                    imagePower[~ (maskG & maskT)] = 0
+                    imagePower = getPreprocessedRFImage(frame["Image"], frame["Mask"])
                     xList.append(imagePower)
                     yLabel = makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel)
                     yList.append(yLabel)
@@ -175,25 +170,37 @@ def scenarioWiseTransformLabels(fifteenClassLabels):
     """
     tenClassLables: n x 15 label
     return: n x 1 labels, 
-    e.g. [0,0,1, 0,0,1, 1,0,0, 1,0,0, 0,1,0] -> [1,2,5]
+    e.g. [0,0,1, 0,0,1, 1,0,0, 1,0,0, 0,1,0] -> [1,2,5], [ADT,ADT,KID]
+         [1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0] -> empty, empty
+
     """
-    result = list()
+    result_seat = list()
+    result_type = list()
     for label in fifteenClassLabels:
-        transform_str = ""
+        seat_transform_str = ""
+        type_transform_str = ""
         for i in range(0, int(label.shape[0]), 3):
-            if (list(label[i:i+3]) == [0,0,1]) or (list(label[i:i+3]) == [0,1,0]):
-                transform_str += str(int(i/3 + 1)) #people present, append seat number
-                transform_str += ","
+            if (list(label[i:i+3]) == [0,0,1]):
+                seat_transform_str += str(int(i/3 + 1)) #people present, append seat number
+                seat_transform_str += ","
+                type_transform_str += 'ADT,'
+            elif (list(label[i:i+3]) == [0,1,0]):
+                seat_transform_str += str(int(i/3 + 1)) #people present, append seat number
+                seat_transform_str += ","
+                type_transform_str += 'KID,'
             elif (list(label[i:i+3]) == [1,0,0]):
-                transform_str += ""
                 pass
             else:
-                transform_str += str(int(i/3 + 1))
-                transform_str += ("n/a")
-                transform_str += ","
-        if not transform_str: transform_str = "empty"
-        if transform_str[-1] == ",": result.append(transform_str[:-1])  
-    return result
+                seat_transform_str += str(int(i/3 + 1))
+                seat_transform_str += ("n/a,")
+                type_transform_str += str(int(i/3 + 1))
+                type_transform_str += ("n/a,")
+        if not seat_transform_str: seat_transform_str = "empty,"
+        if not type_transform_str: type_transform_str = "empty,"
+        if seat_transform_str[-1] == ",": result_seat.append(seat_transform_str[:-1])  
+        if type_transform_str[-1] == ",": result_type.append(type_transform_str[:-1])  
+
+    return result_seat, result_type
 
 
 def getConfusionMatrices(prediction: list, truth):
@@ -247,7 +254,7 @@ def plot_confusion_matrix(y_true, y_pred, cm, classes,
     fig_cm.tight_layout()
     return ax_cm
 
-def makeCSVFile():
+def makeVcabCSVFile(remove_clutter=True):
     """
     Code to generate the csv file that will later be used to construct the custom pytorch dataset
     Works with the vCab dataset
@@ -257,12 +264,13 @@ def makeCSVFile():
     import json
     from utilities import makeOccupancyLabelsWithType
     #create dictionary with two keys: path and label, "path" indexes a list of path. "label" indexes a list of labels
-    data = dict()
-    data["path"] = list()
-    data["label"] = list()
+    data = {"path_original": [],
+            "label": [],
+            "processed_filename": []}
 
     #for loop to traverse the entire dataset and append to the two lists
     rootDir = '/home/vayyar_data/vCab_Recordings'
+    index = 0
     for dayLevelItem in os.scandir(rootDir): #recording time level
         if dayLevelItem.is_dir():
             # omit out of position detectionf or now
@@ -275,28 +283,93 @@ def makeCSVFile():
                                     labels = json.load(labelFile)
                                     occupancyLabel = labels["Occupied_Seats"]
                                     occupancyTypeLabel = labels["Occupant_Type"]
+                                    first_frame_path = os.path.join(minuteLevelItem.path, "rfImages", "001")
+                                    first_rfImage_struct = loadmat(first_frame_path)['rfImageStruct']
+                                    first_frame = getPreprocessedRFImage(first_rfImage_struct['image_DxDyR'], first_rfImage_struct['mask'])
                                     for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
                                         if file.name.endswith('.mat'):
-                                            data["path"].append(file.path)
-                                            data["label"].append(makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel))
-                                            
+                                            try:
+                                                rfImageStruct = loadmat(file.path)['rfImageStruct']
+                                                imagePower = getPreprocessedRFImage(rfImageStruct['image_DxDyR'], rfImageStruct['mask'])
+                                                if remove_clutter == True:
+                                                    if '001' in file.name:
+                                                        continue
+                                                    else:
+                                                        imagePower = np.subtract(imagePower, first_frame)
+                                                data["path_original"].append(file.path)
+                                                data["processed_filename"].append(index)
+                                                data["label"].append(makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel))
+                                                processed_csv = '/home/vayyar_data/processed_vCab_Recordings_clutter_removed/%s.npy' % (str(index))
+                                                np.save(processed_csv, imagePower)
+                                                index += 1
+                                            except Exception as ex:
+                                                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                                                message = template.format(type(ex).__name__, ex.args)
+                                                print(message)
+                                                print(file.path)
     #create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
     #each row will contain info for a sample
     df = pd.DataFrame.from_dict(data)
-    df.to_pickle('/home/vayyar_data/vCab_Recordings/path_label.pickle')
+    df.to_pickle('/home/vayyar_data/processed_vCab_Recordings_clutter_removed/path_label.pickle')
 
-def getPreprocessedRFImage(rfImageStruct):
+def makeFirstBatchCSVFile():
+    """
+    Code to generate the csv file that will later be used to construct the custom pytorch dataset
+    Works with the vCab dataset
+    """
+    import os
+    import pandas as pd
+    import json
+    from utilities import makeOccupancyLabelsWithType
+    #create dictionary with two keys: path and label, "path" indexes a list of path. "label" indexes a list of labels
+    data = {"path_original": [],
+            "label": [],
+            "processed_filename": []}
+
+    #for loop to traverse the entire dataset and append to the two lists
+    rootDir = '/home/vayyar_data/FirstBatch'
+    index = 0
+    for f in os.scandir(rootDir):
+        if f.is_dir():
+            with open(os.path.join(f.path, "test_data.json")) as labelFile:
+                labels = json.load(labelFile)
+                # occupancyLabel is a list of int
+                occupancyLabel = labels["Occupied_Seats"]
+                occupancyTypeLabel = labels["Occupant_Type"]
+            for file in os.scandir(os.path.join(f.path, "SavedVars_RF_Data")):
+                if '.mat' in file.name:
+                    try:
+                        frame  = sio.loadmat(file)
+                        imagePower = getPreprocessedRFImage(frame["Image"], frame["Mask"])
+                        yLabel = makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel)
+                        processed_csv = '/home/vayyar_data/processed_FirstBatch_nonthreshold/%s.npy' % (str(index))
+                        data["path_original"].append(file.path)
+                        data["processed_filename"].append(index)
+                        data["label"].append(yLabel)
+                        np.save(processed_csv, imagePower)
+                        index += 1
+                    except Exception as ex:
+                        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                        message = template.format(type(ex).__name__, ex.args)
+                        print(message)
+                        print(file.path)
+    df = pd.DataFrame.from_dict(data)
+    df.to_pickle('/home/vayyar_data/processed_FirstBatch_nonthreshold/path_label.pickle')
+
+def getPreprocessedRFImage(rfImage, mask, threshold=True):
     """
     Apply Geometric and threshold masking to the input rf image
     Then take the magnitude of the complex values.
     convert data type to float32
     """
-    imagePower = np.absolute(np.power(rfImageStruct['image_DxDyR'], 2)).astype('float32')
-    imageMaxPower = np.max(imagePower)
-    maskG = rfImageStruct["mask"].astype(bool)
-    allowedDropRelPeak = 5
-    maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
-    imagePower[~ (maskG & maskT)] = 0
+    imagePower = np.absolute(np.power(rfImage, 2)).astype('float32')
+    maskG = mask.astype(bool)
+    if threshold == True:
+        imageMaxPower = np.max(imagePower)
+        allowedDropRelPeak = 5
+        maskT = (imagePower >= imageMaxPower/allowedDropRelPeak)
+    imagePower[~ (maskG)] = 0
     return imagePower
+
 
 # %%

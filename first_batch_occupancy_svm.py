@@ -4,17 +4,15 @@
 #%%%
 import numpy as np
 import pandas as pd
-import seaborn as sn
 from matplotlib import style
-style.use("ggplot")
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 from sklearn import svm
 from sklearn.multiclass import OneVsRestClassifier
-from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, plot_confusion_matrix
-import seaborn
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, plot_confusion_matrix, accuracy_score
 from sklearn.model_selection import cross_val_score
 import h5py
 from utilities import plot_confusion_matrix, importDataFromMatFiles, importDataOccupancyType, saveData, loadData, seatWiseTransformLabels, scenarioWiseTransformLabels, getConfusionMatrices
@@ -25,8 +23,10 @@ with h5py.File('training_dataset.hdf5', 'r') as f:
     print(f['path'][:])
 #%%print(X.shape)
 print(Y.shape)
-X = np.reshape(X, (X.shape[0],X.shape[1] * X.shape[2] * X.shape[3]))
-print('Xin',X.shape)
+X = np.sum(X, axis=3)/X.shape[-1]
+X = np.reshape(X, (X.shape[0],X.shape[1] * X.shape[2])) #flatten
+# X = np.reshape(X, (X.shape[0],X.shape[1] * X.shape[2] * X.shape[3])) #flatten
+print('Xin.shape = ',X.shape)
 print(X.dtype)
 
 # %%
@@ -41,21 +41,28 @@ X_train = scaler.transform(X_train)
 X_test = scaler.transform(X_test)
 print('X_train_split',X_train.shape)
 print('X_test_split',X_test.shape)
-pca = PCA(.95)
-pca.fit(X_train)
-print(pca.n_components_)
-X_train = pca.transform(X_train)
-X_test = pca.transform(X_test)
+print('y_train', y_train.shape)
+print('y_test', y_test.shape)
+
+# pca = PCA(.95)
+# pca.fit(X_train)
+# print(pca.n_components_)
+# X_train = pca.transform(X_train)
+# X_test = pca.transform(X_test)
 print('X_train_pca',X_train.shape)
 print('X_test_pca',X_test.shape)
-
+#%%
 # svm classifier
-clf = OneVsRestClassifier(svm.SVC(kernel='linear', C=1))
+# clf = OneVsRestClassifier(svm.SVC(kernel='linear', C=1))
+clf = MultiOutputClassifier(svm.SVC(kernel='linear', C=1))
+print(X_train.shape)
+print(y_train.shape)
 clf.fit(X_train, y_train)
 
 
 # %%
 y_pred = clf.predict(X_test)
+print(accuracy_score(y_test, y_pred))
 #%%
 
 y_pred_seat_result = np.array(seatWiseTransformLabels(y_pred))
