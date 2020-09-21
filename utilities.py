@@ -158,7 +158,7 @@ def seatWiseTransformLabels(fifteenClassLabels):
     seat_4_label = [''.join(row) for row in fifteenClassLabels[:,9:12]]
     seat_5_label = [''.join(row) for row in fifteenClassLabels[:,12:15]]
     encoder = LabelEncoder()
-    encoder.fit(['100', '010', '001'])
+    encoder.fit(['100', '010', '001', '000', '011', '101', '110', '111'])
     seat_1_label = encoder.transform(seat_1_label)
     seat_2_label = encoder.transform(seat_2_label)
     seat_3_label = encoder.transform(seat_3_label)
@@ -171,7 +171,7 @@ def scenarioWiseTransformLabels(fifteenClassLabels):
     tenClassLables: n x 15 label
     return: n x 1 labels, 
     e.g. [0,0,1, 0,0,1, 1,0,0, 1,0,0, 0,1,0] -> [1,2,5], [ADT,ADT,KID]
-         [1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0] -> empty, empty
+         [1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0] -> EMP, EMP
 
     """
     result_seat = list()
@@ -195,8 +195,8 @@ def scenarioWiseTransformLabels(fifteenClassLabels):
                 seat_transform_str += ("n/a,")
                 type_transform_str += str(int(i/3 + 1))
                 type_transform_str += ("n/a,")
-        if not seat_transform_str: seat_transform_str = "empty,"
-        if not type_transform_str: type_transform_str = "empty,"
+        if not seat_transform_str: seat_transform_str = "EMP,"
+        if not type_transform_str: type_transform_str = "EMP,"
         if seat_transform_str[-1] == ",": result_seat.append(seat_transform_str[:-1])  
         if type_transform_str[-1] == ",": result_type.append(type_transform_str[:-1])  
 
