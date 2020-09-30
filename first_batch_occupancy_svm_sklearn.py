@@ -1,4 +1,61 @@
 #%%
+from torch.utils.data import Dataset, DataLoader, random_split
+import pandas as pd
+from utilities import loadmat, getPreprocessedRFImage, scenarioWiseTransformLabels
+import os
+from data_prep import vCabDataSet, cropR
+import torch
+import numpy as np
+from torchvision import transforms
+import torch.optim as optim
+from torch.autograd import Variable
+from models import SVM
+import pkbar
+from sklearn.multioutput import MultiOutputClassifier
+import pickle
+torch.manual_seed(0)
+#%% Import vCab_Recordings dataset
+transform = transforms.Compose([
+            cropR(24),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[1.655461726353112e-06],
+                                 std=[1.3920989854294221e-05])
+        ])
+dataset = vCabDataSet('/home/vayyar_data/processed_FirstBatch', transform)
+
+#%% Split training and testing dataset
+train_percent = 0.9
+validation_percent = 0.05
+testing_percent = 0.05
+total_num = len(dataset)
+training_num = int(train_percent * total_num)
+validation_num = int(validation_percent * total_num)
+testing_num = int(total_num - training_num - validation_num)
+
+train_set, val_set, test_set = random_split(dataset, [training_num, validation_num, testing_num])
+
+# %%
+batch_size = 512
+train_loader = DataLoader(
+    train_set,
+    batch_size=batch_size,
+    num_workers=8,
+    shuffle=True
+)
+val_loader = DataLoader(
+    val_set,
+    batch_size=batch_size,
+    num_workers=8,
+    shuffle=True
+)
+test_loader = DataLoader(
+    test_set,
+    batch_size=batch_size,
+    num_workers=8,
+    shuffle=True
+)
+print("finished loaders")
+#%%
 from sklearn.linear_model.stochastic_gradient import SGDClassifier
 from sklearn.linear_model import SGDClassifier
 from sklearn.linear_model import PassiveAggressiveClassifier
@@ -87,3 +144,5 @@ for classifier in val_accuracy:
 for classifier in training_accuracy:
     acc = np.average(np.array(training_accuracy[classifier]))
     print('The {} training accuracy is {}.'.format(classifier, acc))
+
+# %%
