@@ -14,7 +14,7 @@ import pkbar
 from sklearn.multioutput import MultiOutputClassifier
 import pickle
 torch.manual_seed(0)
-#%% Import vCab_Recordings dataset
+#%% Import dataset
 transform = transforms.Compose([
             cropR(24),
             transforms.ToTensor(),
@@ -104,10 +104,13 @@ val_accuracy = {'svm':[],
                 'perceptron': []
                 }
 for clf in clf_dict:
-    print(f'{clf}_misclassified_firstBatch.csv')
-    f = open(f'{clf}_misclassified_firstBatch.csv', 'w')
-    f.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type\n']))
-    f.close()
+    print(f'{clf}_firstBatch_result.csv')
+    f1 = open(f'{clf}_firstBatch_result.csv', 'w')
+    f2 = open(f'{clf}_misclassified_firstBatch_result.csv', 'w')
+    f1.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type', 'seat_prediction_result', 'type_prediction_result\n']))
+    f2.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type', 'seat_prediction_result', 'type_prediction_result\n']))
+    f1.close()
+    f2.close()
 for i, batch in enumerate(val_loader):
     x_batch = batch['imagePower'].detach().cpu().numpy()
     x_batch = x_batch.reshape(x_batch.shape[0], x_batch.shape[1]*x_batch.shape[2]*x_batch.shape[3])
@@ -115,8 +118,8 @@ for i, batch in enumerate(val_loader):
     path = np.array(batch['path'])        
     for clf in clf_dict:
         loaded_model = pickle.load(open(f'{clf}_FirstBatch.pickle', 'rb'))
-        misclassified_dict = dict()
-        misclassified_dict = {
+        val_dict = dict()
+        val_dict = {
             'path': [],
             'label_seat': [],
             'predicted_seat':[],
@@ -125,13 +128,16 @@ for i, batch in enumerate(val_loader):
         }
         loaded_model.partial_fit(x_batch, y_batch, classes=np.array([[0, 1]] * int(y_batch.shape[1])))
         y_pred = loaded_model.predict(x_batch)
-        misclassified_indice = np.where((y_pred!=y_batch).any(1))
-        if len(misclassified_indice[0]) != 0:
-            misclassified_dict['path'] = list(path[misclassified_indice])
-            misclassified_dict['predicted_seat'], misclassified_dict['predicted_type'] = scenarioWiseTransformLabels(y_pred[misclassified_indice])
-            misclassified_dict['label_seat'], misclassified_dict['label_type'] = scenarioWiseTransformLabels(y_batch[misclassified_indice])
-            df = pd.DataFrame.from_dict(misclassified_dict)
-            df.to_csv(f'{clf}_misclassified_firstBatch.csv', mode='a', header=False, index=False)
+
+        val_dict['path'] = list(path)
+        val_dict['predicted_seat'], val_dict['predicted_type'] = scenarioWiseTransformLabels(y_pred)
+        val_dict['label_seat'], val_dict['label_type'] = scenarioWiseTransformLabels(y_batch)
+        df = pd.DataFrame.from_dict(val_dict)
+        df['seat_prediction_result'] = np.where(df['label_seat'] == df['predicted_seat'], True, False)
+        df['type_prediction_result'] = np.where(df['label_type'] == df['predicted_type'], True, False)
+        mis_df = df.loc[(df['seat_prediction_result'] == False) | (df['type_prediction_result'] == False)]
+        df.to_csv(f'{clf}_firstBatch_result.csv', mode='a', header=False, index=False)
+        mis_df.to_csv(f'{clf}_misclassified_firstBatch_result.csv', mode='a', header=False, index=False)
         try:
             val_accuracy[clf].append(accuracy_score(y_pred, y_batch))
         except:
