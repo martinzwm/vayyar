@@ -16,7 +16,6 @@ import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.autograd import Variable
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.optim import *
 from utilities import importDataFromMatFiles, loadData, scenarioWiseTransformLabels, getConfusionMatrices, plot_confusion_matrix, seatWiseTransformLabels
 from models import CNNModel, CNNModelRC
