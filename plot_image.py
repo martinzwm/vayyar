@@ -1,4 +1,4 @@
-#%%
+#%% This script is to plot the rfImage of FirstBatch and vCab_Recordings. Provided by Vayyar Imaging.
 from scipy import io
 import numpy as np
 import matplotlib.pyplot as plt
