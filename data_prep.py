@@ -14,6 +14,10 @@ import matplotlib.pyplot as plt
 
 
 def firstBatchdataPrep():
+    '''
+    One-time calling function
+    This function is to store firstBatch dataset into a h5py file. 
+    '''
     x, y, occupiedSeat, occupantType, path = importDataOccupancyType("/home/vayyar_data/FirstBatch")
     with h5py.File('training_dataset.hdf5', 'w') as f:
         f.create_dataset('x', data=x)
@@ -22,7 +26,7 @@ def firstBatchdataPrep():
         f.create_dataset('occupantType', data=occupantType)
         f.create_dataset('path', data=path)
 
-class vCabDataSet(Dataset):
+class rfImageDataSet(Dataset):
     def __init__(self, rootDir, transform = None):
         self.rootDir = rootDir
         self.path_label = pd.read_pickle(os.path.join(rootDir, "path_label.pickle"))
@@ -57,11 +61,14 @@ class cropR(object):
         return image_power
 
 def calculateMeanStd(rootDir):
+    """
+    Computer the mean and standard deviation of a dataset.
+    """
     torch.manual_seed(0)
     transform = transforms.Compose([
                 cropR(24),
             ])
-    dataset = vCabDataSet(rootDir, transform)
+    dataset = rfImageDataSet(rootDir, transform)
     batch_size = 512
     dataset_loader = DataLoader(
         dataset,
@@ -89,6 +96,9 @@ def calculateMeanStd(rootDir):
     return mean.item(), std.item()
 
 def verifyNormalization(rootDir, image_mean, image_std):
+    """
+    Verify the computed mean and standard deviation by checking if mean = 0 and std = 1.
+    """
     torch.manual_seed(0)
     transform = transforms.Compose([
             cropR(24),
@@ -96,7 +106,7 @@ def verifyNormalization(rootDir, image_mean, image_std):
             transforms.Normalize(mean=[image_mean],
                                  std=[image_std])
         ])
-    dataset = vCabDataSet(rootDir, transform=transform)
+    dataset = rfImageDataSet(rootDir, transform=transform)
     subset_percent = 0.8
     subset_num = int(subset_percent * len(dataset))
     print(f'Tested on {subset_num} samples.')
@@ -130,8 +140,10 @@ def verifyNormalization(rootDir, image_mean, image_std):
     std = torch.sqrt(var)
     print(f'mean: {mean}, standard deviation: {std}')
 
-# %%
 def findMinAndMax(rootDir, normalize=False, image_mean=None, image_std=None):
+    """
+    Computer the min and max value in the entire dataset.
+    """
     torch.manual_seed(0)
     if normalize == False:
         transform = transforms.Compose([
@@ -146,7 +158,7 @@ def findMinAndMax(rootDir, normalize=False, image_mean=None, image_std=None):
                                  std=[image_std])
             ])
 
-    dataset = vCabDataSet(rootDir, transform=transform)
+    dataset = rfImageDataSet(rootDir, transform=transform)
     batch_size = 512
     dataset_loader = DataLoader(
         dataset,
@@ -168,10 +180,12 @@ def findMinAndMax(rootDir, normalize=False, image_mean=None, image_std=None):
         if sample_max > max_val: max_val = sample_max
     print(f'min value: {min_val}, max value: {max_val}')
 
-# %%
 #FirstBatch min: 0, max: 0.04205722827464342
 #Vcab_recordings min: 0, max: 8178.7294921875
 def plotHistogram(data_min, data_max, num_bins, rootDir, graph_title, normalize=False, image_mean=None, image_std=None):
+    """
+    Plot the histogram of a dataset.
+    """
     torch.manual_seed(0)
     if normalize == False:
         transform = transforms.Compose([
@@ -185,7 +199,7 @@ def plotHistogram(data_min, data_max, num_bins, rootDir, graph_title, normalize=
                 transforms.Normalize(mean=[image_mean],
                                  std=[image_std])
             ])
-    dataset = vCabDataSet(rootDir, transform=transform)
+    dataset = rfImageDataSet(rootDir, transform=transform)
     batch_size = 512
     dataset_loader = DataLoader(
         dataset,
@@ -207,13 +221,11 @@ def plotHistogram(data_min, data_max, num_bins, rootDir, graph_title, normalize=
     plt.ylabel('count')
     plt.title(graph_title) 
     plt.show()
+    
+# Here are some example plots that I have done:
 # plotHistogram(0, 0.05, 100, '/home/vayyar_data/processed_FirstBatch_nonthreshold', "FirstBatch Data Distribution No Threshold - 100 Bins")
 # plotHistogram(0, 8200, 100, '/home/vayyar_data/processed_vCab_Recordings_nonthreshold', "vCab_Recordings Data Distribution No Threshold - 100 Bins")
 # plotHistogram(-1, 3025, 100, '/home/vayyar_data/processed_FirstBatch_nonthreshold', "FirstBatch Data Distribution No Threshold (normalized) - 100 Bins", normalize=True,image_mean=1.655461726353112e-06,image_std=1.3920989854294221e-05)
 # plotHistogram(-1, 1, 100, '/home/vayyar_data/processed_FirstBatch_nonthreshold', "FirstBatch Data Distribution No Threshold (normalized)- 100 Bins", normalize=True,image_mean=1.655461726353112e-06,image_std=1.3920989854294221e-05)
 # plotHistogram(-1.5, 1340, 100, '/home/vayyar_data/processed_vCab_Recordings_nonthreshold/', "vCab_Recordings Data Distribution No Threshold (normalized)- 100 Bins", normalize=True,image_mean=7.608346462249756,image_std=6.12775993347168)
 # plotHistogram(-1, 1, 100, '/home/vayyar_data/processed_vCab_Recordings_nonthreshold/', "vCab_Recordings Data Distribution No Threshold (normalized)- 100 Bins", normalize=True,image_mean=7.608346462249756,image_std=6.12775993347168)
-
-
-
-# %%

@@ -9,22 +9,23 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MultiLabelBinarizer, StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.preprocessing import LabelEncoder
 
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.autograd import Variable
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.optim import *
-from utilities import importDataFromMatFiles, loadData, scenarioWiseTransformLabels
-from models import CNNModel
+from utilities import importDataFromMatFiles, loadData, scenarioWiseTransformLabels, getConfusionMatrices, seatWiseTransformLabels, plot_seat_wise_bar, multiclass_metric
+from models import CNNModel, CNNModelRC
 from torchvision import transforms
-from data_prep import vCabDataSet, cropR
+from data_prep import rfImageDataSet, cropR
 import pkbar
 import math
 from torch.utils.tensorboard import SummaryWriter
 import argparse
+import seaborn as sn
 
 #%%
 writer = SummaryWriter()
@@ -45,24 +46,24 @@ misclassified_filename = args['mis_data_filename']
 #             transforms.Normalize(mean=[1.655461726353112e-06],
 #                                  std=[1.3920989854294221e-05])
 #         ])
-# dataset = vCabDataSet('/home/vayyar_data/processed_FirstBatch', transform)
+# dataset = rfImageDataSet('/home/vayyar_data/processed_FirstBatch', transform)
 
 #vcab_recordings
-# transform = transforms.Compose([
-#             cropR(24),
-#             transforms.ToTensor(),
-#             transforms.Normalize(mean=[-0.05493089184165001],
-#                                  std=[0.035751599818468094])
-#         ])
-# dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_removed', transform)
-
 transform = transforms.Compose([
             cropR(24),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[7.608346462249756],
-                                 std=[6.12775993347168])
+            transforms.Normalize(mean=[-0.05493089184165001],
+                                 std=[0.035751599818468094])
         ])
-dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
+dataset = rfImageDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_removed', transform)
+
+# transform = transforms.Compose([
+#             cropR(24),
+#             transforms.ToTensor(),
+#             transforms.Normalize(mean=[7.608346462249756],
+#                                  std=[6.12775993347168])
+#         ])
+# dataset = rfImageDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
 
 
 #%% Split training and testing dataset
@@ -100,12 +101,12 @@ print("finished loaders")
 #%%
 #Definition of hyperparameters
 start = time.time()
-# model_name = "/home/vayyar_model/vCab_Recordings_cnn_20200807.pt"
+model_name = "cnn_clutter_removal.pickle"
 # model_name = "/home/vayyar_model/first_batch_cnn_20200807.pt"
 num_classes = 15
 num_epochs = 10
 # Create CNN
-model = CNNModel(num_classes)
+model = CNNModelRC(num_classes)
 model.train()
 #model.cuda()
 print(model)
@@ -113,8 +114,8 @@ print(model)
 # Binary Cross Entropy Loss for MultiLabel Classfication
 error = nn.BCELoss()
 # learning_rate = 0.001 #FirstBatch
-# learning_rate = 0.0001 #Vcab_Recordings with clutter removal
-learning_rate = 0.005 #Vcab_Recordings
+learning_rate = 0.0001 #Vcab_Recordings with clutter removal
+# learning_rate = 0.005 #Vcab_Recordings
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 #%%
 # CNN model training
@@ -178,19 +179,29 @@ torch.save(model.state_dict(), model_name)
 end = time.time()
 print(f'duration = {end - start}s')
 # %%
-model = CNNModel(num_classes)
+model = CNNModelRC(num_classes)
 model.load_state_dict(torch.load(model_name))
 model.eval()
 
 test_per_epoch = math.ceil(len(test_set) / batch_size)
 accuracy = []
 
-f1 = open('all_cnn_arch2.csv', 'w')
+f1 = open('all_cnn_clutter_removal.csv', 'w')
 f2 = open(misclassified_filename, 'w')
-f1.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type', 'seat_prediction_result', 'type_prediction_result\n']))
-f2.write(','.join(['path', 'label_seat', 'predicted_seat', 'label_type', 'predicted_type', 'seat_prediction_result', 'type_prediction_result\n']))
+f1.write(','.join(['path', 
+                   'label_seat', 'predicted_seat', 
+                   'label_type', 'predicted_type\n']))
+f2.write(','.join(['path', 
+                   'label_seat', 'predicted_seat', 
+                   'label_type', 'predicted_type\n']))
 f1.close()
 f2.close()
+cm_dict = {"cm1": np.zeros((4,4), dtype=np.int64),
+           "cm2": np.zeros((4,4), dtype=np.int64),
+           "cm3": np.zeros((4,4), dtype=np.int64),
+           "cm4": np.zeros((4,4), dtype=np.int64),
+           "cm5": np.zeros((4,4), dtype=np.int64)}
+
 for sample in test_loader:
     x_test = sample["imagePower"].float().to(device)
     y_test = sample["label"].float().to(device)
@@ -199,26 +210,46 @@ for sample in test_loader:
     outputs = model(train)
     outputs[outputs < 0.5] = 0
     outputs[outputs > 0.5] = 1
-    outputs = outputs.detach().numpy()
-    y_test = y_test.detach().numpy()
+    outputs = outputs.detach().numpy().astype('int8')
+    y_test = y_test.detach().numpy().astype('int8')
     accuracy.append(accuracy_score(y_test, outputs))
     test_dict = {
         'path': [],
-        'label_seat': [],
-        'predicted_seat':[],
-        'label_type': [],
-        'predicted_type': []
+        'label_seat': [], 'predicted_seat':[],
+        'label_type': [], 'predicted_type': []
     }
     test_dict['path'] = list(path)
     test_dict['predicted_seat'], test_dict['predicted_type'] = scenarioWiseTransformLabels(outputs)
     test_dict['label_seat'], test_dict['label_type'] = scenarioWiseTransformLabels(y_test)
+    pred_seat_label = seatWiseTransformLabels(outputs)
+    true_seat_label = seatWiseTransformLabels(y_test)
+    for i in range(len(pred_seat_label)):
+        label = set(true_seat_label[i] + pred_seat_label[i])
+        cm = confusion_matrix(true_seat_label[i], pred_seat_label[i], labels=['ADT', 'KID', 'EMP', 'OTHER'])
+        cm_name = "cm" + str(i+1)
+        cm_dict[cm_name] = np.add(cm_dict[cm_name], cm)
     df = pd.DataFrame.from_dict(test_dict)
     df['seat_prediction_result'] = np.where(df['label_seat'] == df['predicted_seat'], True, False)
     df['type_prediction_result'] = np.where(df['label_type'] == df['predicted_type'], True, False)
     mis_df = df.loc[(df['seat_prediction_result'] == False) | (df['type_prediction_result'] == False)]
-    df.to_csv('all_cnn_arch2.csv', mode='a', header=False, index=False)
+    df.to_csv('all_cnn_clutter_removal.csv', mode='a', header=False, index=False)
     mis_df.to_csv(misclassified_filename, mode='a', header=False, index=False)
 acc = np.average(np.array(accuracy))
 print(f'Testing accuracy is {acc}.')
+# %%
+f1_score_array = np.empty((5,3))
+for i, cm in enumerate(cm_dict):
+    f1_score_array[i] = multiclass_metric(cm_dict[cm], metric='accuracy')
+    normalized_cm = cm_dict[cm] / np.array([np.sum(cm_dict[cm], axis=1),]*4).T
+    df_cm = pd.DataFrame(list(normalized_cm[:3,:]), index = ["ADULT", "KID", "EMPTY"],
+                  columns = ["ADULT", "KID", "EMPTY", "UNKNOWN"])
+    plt.figure(figsize = (10,7))
+    plt.title(f'Confusion Matrix for Seat {i+1}')
+    
+    sn.heatmap(df_cm, annot=True, fmt='.2%', cmap='Blues')
+    plt.xlabel('Predicted Class')
+    plt.ylabel('Target Class')
+plot_seat_wise_bar(f1_score_array, metric='Accuracy')
+# %%
 
 # %%
