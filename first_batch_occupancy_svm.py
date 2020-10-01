@@ -1,6 +1,5 @@
 # To add a new cell, type '# %%'
 # To add a new markdown cell, type '# %% [markdown]'
-# %%
 #%%%
 import numpy as np
 import pandas as pd
@@ -53,8 +52,7 @@ print('X_train_pca',X_train.shape)
 print('X_test_pca',X_test.shape)
 #%%
 # svm classifier
-# clf = OneVsRestClassifier(svm.SVC(kernel='linear', C=1))
-clf = MultiOutputClassifier(svm.SVC(kernel='linear', C=1))
+clf = OneVsRestClassifier(svm.SVC(kernel='linear', C=1))
 print(X_train.shape)
 print(y_train.shape)
 clf.fit(X_train, y_train)
@@ -80,13 +78,6 @@ y_test_trans_result = np.array([encoder.transform(y_test_scenario_result)]).T
 
 thirtytwo_classes_cf = confusion_matrix(y_test_trans_result, y_pred_trans_result)
 confusionMatrices = getConfusionMatrices(y_pred_seat_result, y_test_seat_result)
-# %%
-
-# plot_confusion_matrix(clf, y_pred_trans_result, y_test_trans_result)  # doctest: +SKIP
-class_names = list(set(y_test_scenario_result + y_pred_scenario_result))
-plot_confusion_matrix(y_test_trans_result, y_pred_trans_result, thirtytwo_classes_cf, classes=np.array(class_names), title='32 classes Confusion Matrix')
-
-
 #%%
 for i in range(5):
         print(classification_report(y_test[i], y_pred[i]))
