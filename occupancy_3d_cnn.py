@@ -17,7 +17,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from torch.autograd import Variable
 import torch.nn as nn
 from torch.optim import *
-from utilities import importDataFromMatFiles, loadData, scenarioWiseTransformLabels, getConfusionMatrices, plot_confusion_matrix, seatWiseTransformLabels
+from utilities import importDataFromMatFiles, loadData, scenarioWiseTransformLabels, getConfusionMatrices, seatWiseTransformLabels, plot_seat_wise_bar, multiclass_metric
 from models import CNNModel, CNNModelRC
 from torchvision import transforms
 from data_prep import vCabDataSet, cropR
@@ -25,6 +25,7 @@ import pkbar
 import math
 from torch.utils.tensorboard import SummaryWriter
 import argparse
+import seaborn as sn
 
 #%%
 writer = SummaryWriter()
@@ -189,26 +190,17 @@ f1 = open('all_cnn_clutter_removal.csv', 'w')
 f2 = open(misclassified_filename, 'w')
 f1.write(','.join(['path', 
                    'label_seat', 'predicted_seat', 
-                   'label_type', 'predicted_type', 
-                   'seat_prediction_result', 'type_prediction_result\n']))
+                   'label_type', 'predicted_type\n']))
 f2.write(','.join(['path', 
                    'label_seat', 'predicted_seat', 
-                   'label_type', 'predicted_type', 
-                   'seat_prediction_result', 'type_prediction_result\n']))
+                   'label_type', 'predicted_type\n']))
 f1.close()
 f2.close()
-keys = ['1ADT', '1KID', '1EMP', 
-        '2ADT', '2KID', '2EMP', 
-        '3ADT', '3KID', '3EMP', 
-        '4ADT', '4KID', '4EMP', 
-        '5ADT', '5KID', '5EMP']
-total_dict = dict.fromkeys(keys, 0)
-mis_dict = dict.fromkeys(keys, 0)
-cm_dict = {"cm1": np.empty((4,4)),
-           "cm2": np.empty((4,4)),
-           "cm3": np.empty((4,4)),
-           "cm4": np.empty((4,4)),
-           "cm5": np.empty((4,4))}
+cm_dict = {"cm1": np.zeros((4,4), dtype=np.int64),
+           "cm2": np.zeros((4,4), dtype=np.int64),
+           "cm3": np.zeros((4,4), dtype=np.int64),
+           "cm4": np.zeros((4,4), dtype=np.int64),
+           "cm5": np.zeros((4,4), dtype=np.int64)}
 
 for sample in test_loader:
     x_test = sample["imagePower"].float().to(device)
@@ -226,70 +218,38 @@ for sample in test_loader:
         'label_seat': [], 'predicted_seat':[],
         'label_type': [], 'predicted_type': []
     }
-    #['1','3','5'] ['ADT', 'KID', 'KID']
-    #'1_label'
     test_dict['path'] = list(path)
     test_dict['predicted_seat'], test_dict['predicted_type'] = scenarioWiseTransformLabels(outputs)
     test_dict['label_seat'], test_dict['label_type'] = scenarioWiseTransformLabels(y_test)
     pred_seat_label = seatWiseTransformLabels(outputs)
     true_seat_label = seatWiseTransformLabels(y_test)
     for i in range(len(pred_seat_label)):
-        print(i)
-        cm = confusion_matrix(true_seat_label[i], pred_seat_label[i])
-        if cm.shape == (3,3): cm = np.pad(cm, (0,1), 'constant') #make it to be 4,4 cf matrix
-        else:
-            other_sum = np.sum(cm[:,3:],axis=1)[:4].reshape(4,1)
-            cm = np.concatenate((cm[:4,:3], other_sum), axis=1)
+        label = set(true_seat_label[i] + pred_seat_label[i])
+        cm = confusion_matrix(true_seat_label[i], pred_seat_label[i], labels=['ADT', 'KID', 'EMP', 'OTHER'])
         cm_name = "cm" + str(i+1)
         cm_dict[cm_name] = np.add(cm_dict[cm_name], cm)
-    for i in range(len(test_dict['label_seat'])):
-        label_seat_lst = test_dict['label_seat'][i].split(',')
-        label_type_lst = test_dict['label_type'][i].split(',')
-        test = [i + j for i, j in zip(label_seat_lst, label_type_lst)]
-        predicted_seat_lst = test_dict['predicted_seat'][i].split(',')
-        predicted_type_lst = test_dict['predicted_type'][i].split(',')
-        pred = [i + j for i, j in zip(predicted_seat_lst, predicted_type_lst)]
-        for t in test:
-            if t == 'emptyempty':
-                total_dict['1EMP'] += 1
-                total_dict['2EMP'] += 1
-                total_dict['3EMP'] += 1
-                total_dict['4EMP'] += 1
-                total_dict['5EMP'] += 1
-                for p in pred:
-                    if t == p: pass
-                    else: 
-                        mis_seat = re.sub("\D", "", p)
-                        mis_key = f'{mis_seat}EMP'
-                        mis_dict[mis_key] += 1
-            else:
-                total_dict[t] += 1
-                if t in pred: pass
-                else: mis_dict[t] += 1 
     df = pd.DataFrame.from_dict(test_dict)
     df['seat_prediction_result'] = np.where(df['label_seat'] == df['predicted_seat'], True, False)
     df['type_prediction_result'] = np.where(df['label_type'] == df['predicted_type'], True, False)
     mis_df = df.loc[(df['seat_prediction_result'] == False) | (df['type_prediction_result'] == False)]
     df.to_csv('all_cnn_clutter_removal.csv', mode='a', header=False, index=False)
     mis_df.to_csv(misclassified_filename, mode='a', header=False, index=False)
-    
-    encoder = LabelEncoder()
-    encoder.fit(test_dict['predicted_seat'])
-    y_pred_trans_result = np.array([encoder.transform(test_dict['predicted_seat'])]).T
-    y_test_trans_result = np.array([encoder.transform(test_dict['label_seat'])]).T
-
-    thirtytwo_classes_cf = confusion_matrix(y_test_trans_result, y_pred_trans_result)
-    class_names = list(set(test_dict['label_seat'] + test_dict['predicted_seat']))
-    plot_confusion_matrix(y_test_trans_result, y_pred_trans_result, thirtytwo_classes_cf, classes=np.array(class_names), title='32 classes Confusion Matrix', normalize=True)
-
 acc = np.average(np.array(accuracy))
 print(f'Testing accuracy is {acc}.')
 # %%
-print(total_dict)
-print(mis_dict)
-group_accuracy = {}
-for key in total_dict:
-    group_accuracy[key] = 1- (mis_dict[key] / total_dict[key])
+f1_score_array = np.empty((5,3))
+for i, cm in enumerate(cm_dict):
+    f1_score_array[i] = multiclass_metric(cm_dict[cm], metric='accuracy')
+    normalized_cm = cm_dict[cm] / np.array([np.sum(cm_dict[cm], axis=1),]*4).T
+    df_cm = pd.DataFrame(list(normalized_cm[:3,:]), index = ["ADULT", "KID", "EMPTY"],
+                  columns = ["ADULT", "KID", "EMPTY", "UNKNOWN"])
+    plt.figure(figsize = (10,7))
+    plt.title(f'Confusion Matrix for Seat {i+1}')
+    
+    sn.heatmap(df_cm, annot=True, fmt='.2%', cmap='Blues')
+    plt.xlabel('Predicted Class')
+    plt.ylabel('Target Class')
+plot_seat_wise_bar(f1_score_array, metric='Accuracy')
 # %%
-print(group_accuracy)
+
 # %%

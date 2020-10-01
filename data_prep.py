@@ -14,6 +14,10 @@ import matplotlib.pyplot as plt
 
 
 def firstBatchdataPrep():
+    '''
+    One-time calling function
+    This function is to store firstBatch dataset into a h5py file. 
+    '''
     x, y, occupiedSeat, occupantType, path = importDataOccupancyType("/home/vayyar_data/FirstBatch")
     with h5py.File('training_dataset.hdf5', 'w') as f:
         f.create_dataset('x', data=x)
@@ -130,7 +134,6 @@ def verifyNormalization(rootDir, image_mean, image_std):
     std = torch.sqrt(var)
     print(f'mean: {mean}, standard deviation: {std}')
 
-# %%
 def findMinAndMax(rootDir, normalize=False, image_mean=None, image_std=None):
     torch.manual_seed(0)
     if normalize == False:
@@ -168,7 +171,6 @@ def findMinAndMax(rootDir, normalize=False, image_mean=None, image_std=None):
         if sample_max > max_val: max_val = sample_max
     print(f'min value: {min_val}, max value: {max_val}')
 
-# %%
 #FirstBatch min: 0, max: 0.04205722827464342
 #Vcab_recordings min: 0, max: 8178.7294921875
 def plotHistogram(data_min, data_max, num_bins, rootDir, graph_title, normalize=False, image_mean=None, image_std=None):

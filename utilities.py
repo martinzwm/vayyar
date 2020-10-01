@@ -157,13 +157,12 @@ def seatWiseTransformLabels(fifteenClassLabels):
     seat_3_label = [''.join(row) for row in fifteenClassLabels[:,6:9]]
     seat_4_label = [''.join(row) for row in fifteenClassLabels[:,9:12]]
     seat_5_label = [''.join(row) for row in fifteenClassLabels[:,12:15]]
-    encoder = LabelEncoder()
-    encoder.fit(['100', '010', '001', '000', '011', '101', '110', '111'])
-    seat_1_label = encoder.transform(seat_1_label)
-    seat_2_label = encoder.transform(seat_2_label)
-    seat_3_label = encoder.transform(seat_3_label)
-    seat_4_label = encoder.transform(seat_4_label)
-    seat_5_label = encoder.transform(seat_5_label)
+    map_dict = {'100': 'EMP', '010':'KID','001':'ADT','000':'OTHER', '011':'OTHER', '101':'OTHER', '110':'OTHER', '111':'OTHER'}
+    seat_1_label = list(map(map_dict.get, seat_1_label))
+    seat_2_label = list(map(map_dict.get, seat_2_label))
+    seat_3_label = list(map(map_dict.get, seat_3_label))
+    seat_4_label = list(map(map_dict.get, seat_4_label))
+    seat_5_label = list(map(map_dict.get, seat_5_label))
     return [seat_1_label, seat_2_label, seat_3_label, seat_4_label, seat_5_label]
 
 def scenarioWiseTransformLabels(fifteenClassLabels):
@@ -202,62 +201,18 @@ def scenarioWiseTransformLabels(fifteenClassLabels):
 
     return result_seat, result_type
 
-
 def getConfusionMatrices(prediction: list, truth):
     confusionMatrices = list()
     for i in range(5):
         confusionMatrices.append(confusion_matrix(truth[i], prediction[i]))
     return confusionMatrices
 
-def plot_confusion_matrix(y_true, y_pred, cm, classes, 
-                          normalize=False,
-                          title=None,
-                          cmap=plt.cm.Blues):
+def makeVcabPickleFile(remove_clutter=True):
     """
-    This function prints and plots the confusion matrix.
-    Normalization can be applied by setting `normalize=True`.
-    """
-    if not title:
-        if normalize:
-            title = 'Normalized confusion matrix'
-        else:
-            title = 'Confusion matrix, without normalization'
-
-    
-    # Only use the labels that appear in the data
-    if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    fig_cm, ax_cm = plt.subplots()
-    im = ax_cm.imshow(cm, interpolation='nearest', cmap=cmap)
-    ax_cm.figure.colorbar(im, ax=ax_cm)
-    # We want to show all ticks...
-    ax_cm.set(xticks=np.arange(cm.shape[1]),
-           yticks=np.arange(cm.shape[0]),
-           # ... and label them with the respective list entries
-           xticklabels=classes, yticklabels=classes,
-           title=title,
-           ylabel='True label',
-           xlabel='Predicted label')
-
-    # Rotate the tick labels and set their alignment.
-    plt.setp(ax_cm.get_xticklabels(), rotation=45, ha="right",
-             rotation_mode="anchor")
-
-    # Loop over data dimensions and create text annotations.
-    fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
-    for i in range(cm.shape[0]):
-        for j in range(cm.shape[1]):
-            ax_cm.text(j, i, format(cm[i, j], fmt),
-                    ha="center", va="center",
-                    color="white" if cm[i, j] > thresh else "black")
-    fig_cm.tight_layout()
-    return ax_cm
-
-def makeVcabCSVFile(remove_clutter=True):
-    """
-    Code to generate the csv file that will later be used to construct the custom pytorch dataset
+    One-time function calling function, can be called using python interpreter or jupyter notebook
+    Code to generate the pickle file that will later be used to construct the custom pytorch dataset
     Works with the vCab dataset
+    remove_clutter: True by default. If remove_clutter is enabled, it will subtract every single frame from the first frame at miniute level folder.
     """
     import os
     import pandas as pd
@@ -299,6 +254,7 @@ def makeVcabCSVFile(remove_clutter=True):
                                                 data["path_original"].append(file.path)
                                                 data["processed_filename"].append(index)
                                                 data["label"].append(makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel))
+                                                # Store processed files into a separate folder. E.g. '/home/vayyar_data/processed_vCab_Recordings_clutter_removed/...' 
                                                 processed_csv = '/home/vayyar_data/processed_vCab_Recordings_clutter_removed/%s.npy' % (str(index))
                                                 np.save(processed_csv, imagePower)
                                                 index += 1
@@ -307,15 +263,18 @@ def makeVcabCSVFile(remove_clutter=True):
                                                 message = template.format(type(ex).__name__, ex.args)
                                                 print(message)
                                                 print(file.path)
-    #create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
-    #each row will contain info for a sample
-    df = pd.DataFrame.from_dict(data)
+    # Create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
+    # Each row will contain info for a sample
+    # Store the index dataframe into a pickle fle. E.g. '/home/vayyar_data/processed_vCab_Recordings_clutter_removed/path_label.pickle'
+    df = pd.DataFrame.from_dict(data) 
     df.to_pickle('/home/vayyar_data/processed_vCab_Recordings_clutter_removed/path_label.pickle')
 
-def makeFirstBatchCSVFile():
+def makeFirstBatchPickleFile():
     """
-    Code to generate the csv file that will later be used to construct the custom pytorch dataset
-    Works with the vCab dataset
+    One-time function calling function, can be called using python interpreter or jupyter notebook
+    Code to generate the pickle file that will later be used to construct the custom pytorch dataset
+    Works with the FirstBatch dataset
+    Note: the clutter removal processing technique has been applied on FirstBatch dataset already, so no more processing is needed
     """
     import os
     import pandas as pd
@@ -342,6 +301,7 @@ def makeFirstBatchCSVFile():
                         frame  = sio.loadmat(file)
                         imagePower = getPreprocessedRFImage(frame["Image"], frame["Mask"])
                         yLabel = makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel)
+                        # Store processed files into a separate folder. E.g. '/home/vayyar_data/processed_vCab_Recordings_clutter_removed/...' 
                         processed_csv = '/home/vayyar_data/processed_FirstBatch_nonthreshold/%s.npy' % (str(index))
                         data["path_original"].append(file.path)
                         data["processed_filename"].append(index)
@@ -353,6 +313,10 @@ def makeFirstBatchCSVFile():
                         message = template.format(type(ex).__name__, ex.args)
                         print(message)
                         print(file.path)
+
+    # Create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
+    # Each row will contain info for a sample
+    # Store the index dataframe into a pickle fle. E.g. '/home/vayyar_data/processed_FirstBatch_nonthreshold/path_label.pickle'
     df = pd.DataFrame.from_dict(data)
     df.to_pickle('/home/vayyar_data/processed_FirstBatch_nonthreshold/path_label.pickle')
 
@@ -371,5 +335,66 @@ def getPreprocessedRFImage(rfImage, mask, threshold=True):
     imagePower[~ (maskG)] = 0
     return imagePower
 
+def cal_accuracy(tp, total):
+    return tp / total
 
+def cal_precision(tp, fp):
+    return tp / (tp + fp)
+
+def cal_recall(tp, fn):
+    return tp / (tp + fn)
+
+def cal_f1_score(tp, fp, fn):
+    return 2 * (cal_precision(tp, fp) * cal_recall(tp, fn)) / (cal_precision(tp, fp) + cal_recall(tp, fn))
+
+def multiclass_metric(cm, metric='accuracy'):
+    """
+    Calculate the metric for each class.
+    Input: confusion matrix (4x4), type of the metric (accuracy as default)
+    Output: three different scores for each class (adult, kid and empty)
+    """
+    result = list()    #[ADT, KID, EMP]
+    for i, row in enumerate(cm[:3,:]):
+        tp = row[i]
+        fp = np.sum(cm[:,i])-tp
+        fn = np.sum(cm[i,:])-tp
+        if metric == 'accuracy': score = cal_accuracy(tp, np.sum(row))
+        elif metric == 'precision': score = cal_precision(tp, fp)
+        elif metric == 'recall': score = cal_recall(tp, fn)
+        elif metric == 'f1_score': score = cal_f1_score(tp, fp, fn)
+        result.append(score)
+    return np.array(result)
+
+def plot_seat_wise_bar(score_array, metric='Accuracy'):
+    """
+    Plot metrics (e.g. accuracy, f1 score, precision etc.) for each seat
+    """
+    N = score_array.shape[0]
+    ind = np.arange(N)  # the x locations for the groups
+    width = 0.27       # the width of the bars
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    legend_labels = ["ADULT", "KID", "EMPTY"]
+    xticks_labels = [f'Seat{x+1}' for x in range(N)]
+    # for i in range(score_array.shape[1]):
+    #     yvals = list(score_array[:,i])
+    #     rects1 = ax.bar(ind, yvals, width, color=colors[i])
+    #     rects1.set_label(legend_labels[i])
+    
+    yvals = list(score_array[:,0])
+    rects1 = ax.bar(ind, yvals, width, color='r')
+    rects1.set_label(legend_labels[0])
+    zvals = list(score_array[:,1])
+    rects2 = ax.bar(ind+width, zvals, width, color='g')
+    rects2.set_label(legend_labels[1])
+    kvals = list(score_array[:,2])
+    rects3 = ax.bar(ind+width*2, kvals, width, color='b')
+    rects3.set_label(legend_labels[2])
+
+    ax.set_title(f'Seat Wise {metric}')
+    ax.set_ylabel(metric)
+    ax.set_xticks(ind+width)
+    ax.set_xticklabels(xticks_labels)
+    ax.legend(bbox_to_anchor=(1.05, 1))
 # %%
