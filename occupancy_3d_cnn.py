@@ -20,7 +20,7 @@ from torch.optim import *
 from utilities import importDataFromMatFiles, loadData, scenarioWiseTransformLabels, getConfusionMatrices, seatWiseTransformLabels, plot_seat_wise_bar, multiclass_metric
 from models import CNNModel, CNNModelRC
 from torchvision import transforms
-from data_prep import vCabDataSet, cropR
+from data_prep import rfImageDataSet, cropR
 import pkbar
 import math
 from torch.utils.tensorboard import SummaryWriter
@@ -46,7 +46,7 @@ misclassified_filename = args['mis_data_filename']
 #             transforms.Normalize(mean=[1.655461726353112e-06],
 #                                  std=[1.3920989854294221e-05])
 #         ])
-# dataset = vCabDataSet('/home/vayyar_data/processed_FirstBatch', transform)
+# dataset = rfImageDataSet('/home/vayyar_data/processed_FirstBatch', transform)
 
 #vcab_recordings
 transform = transforms.Compose([
@@ -55,7 +55,7 @@ transform = transforms.Compose([
             transforms.Normalize(mean=[-0.05493089184165001],
                                  std=[0.035751599818468094])
         ])
-dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_removed', transform)
+dataset = rfImageDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_removed', transform)
 
 # transform = transforms.Compose([
 #             cropR(24),
@@ -63,7 +63,7 @@ dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_remov
 #             transforms.Normalize(mean=[7.608346462249756],
 #                                  std=[6.12775993347168])
 #         ])
-# dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
+# dataset = rfImageDataSet('/home/vayyar_data/processed_vCab_Recordings', transform)
 
 
 #%% Split training and testing dataset

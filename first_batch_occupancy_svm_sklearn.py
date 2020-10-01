@@ -3,7 +3,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 import pandas as pd
 from utilities import loadmat, getPreprocessedRFImage, scenarioWiseTransformLabels
 import os
-from data_prep import vCabDataSet, cropR
+from data_prep import rfImageDataSet, cropR
 import torch
 import numpy as np
 from torchvision import transforms
@@ -21,7 +21,7 @@ transform = transforms.Compose([
             transforms.Normalize(mean=[1.655461726353112e-06],
                                  std=[1.3920989854294221e-05])
         ])
-dataset = vCabDataSet('/home/vayyar_data/processed_FirstBatch', transform)
+dataset = rfImageDataSet('/home/vayyar_data/processed_FirstBatch', transform)
 
 #%% Split training and testing dataset
 train_percent = 0.9

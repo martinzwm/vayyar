@@ -3,7 +3,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 import pandas as pd
 from utilities import loadmat, getPreprocessedRFImage, scenarioWiseTransformLabels
 import os
-from data_prep import vCabDataSet, cropR, clutterRemoval
+from data_prep import rfImageDataSet, cropR, clutterRemoval
 import torch
 import numpy as np
 from torchvision import transforms
@@ -21,7 +21,7 @@ transform = transforms.Compose([
             transforms.Normalize(mean=[-0.05493089184165001],
                                  std=[0.035751599818468094])
         ])
-dataset = vCabDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_removed', transform)
+dataset = rfImageDataSet('/home/vayyar_data/processed_vCab_Recordings_clutter_removed', transform)
 
 #%% Split training and testing dataset
 train_percent = 0.9
@@ -180,8 +180,6 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import SVC
 import time
 custom_classifier1 = SGDClassifier(learning_rate='constant', eta0=0.01)
-custom_classifier2 = PassiveAggressiveClassifier()
-custom_classifier3 = Perceptron()
 clf_dict =  {'svm':MultiOutputClassifier(custom_classifier1)}
 #%%
 training_accuracy = {'svm':[]}
