@@ -269,6 +269,91 @@ def makeVcabPickleFile(remove_clutter=True):
     df = pd.DataFrame.from_dict(data) 
     df.to_pickle('/home/vayyar_data/processed_vCab_Recordings_clutter_removed/path_label.pickle')
 
+#create files for seperate session tests
+def makeSeperatedVcabPickleFile(remove_clutter=True):
+    """
+    One-time function calling function, can be called using python interpreter or jupyter notebook
+    Code to generate the pickle file that will later be used to construct the custom pytorch dataset
+    Works with the vCab dataset
+    remove_clutter: True by default. If remove_clutter is enabled, it will subtract every single frame from the first frame at miniute level folder.
+    """
+    import os
+    import pandas as pd
+    import json
+    from utilities import makeOccupancyLabelsWithType
+    #create dictionary with two keys: path and label, "path" indexes a list of path. "label" indexes a list of labels
+    data = {"path_original": [],
+            "label": [],
+            "processed_filename": []}
+
+    #for loop to traverse the entire dataset and append to the two lists
+    rootDir = '/home/vayyar_data/vCab_Recordings'
+    index = 0
+    # car_set = list()
+    minute_level_set = list()
+    for dayLevelItem in os.scandir(rootDir): #recording time level
+        if dayLevelItem.is_dir():
+            # omit out of position detectionf or now
+            if 'OOP' not in dayLevelItem.name:
+                for carLevelItem in os.scandir(dayLevelItem.path):#car level
+                    if carLevelItem.is_dir() and ('ford2' in carLevelItem.path):
+                        for minuteLevelItem in os.scandir(carLevelItem.path):#minute level, e.g. v_Copy (12) - Copy__04-11-2019 15-23-54
+                            if minuteLevelItem.is_dir():
+                                minute_level_set.append(minuteLevelItem.path)
+                                # with open(os.path.join(minuteLevelItem.path, "test_data.json")) as labelFile:
+                                #     labels = json.load(labelFile)
+                                #     car_set.append(labels['Car_Model'][0])
+    print(len(minute_level_set))
+    training_num = int(0.7 * len(minute_level_set))
+    validation_num = int(0.05 * len(minute_level_set))
+    testing_num = len(minute_level_set) - training_num - validation_num
+    training_set = minute_level_set[0:training_num]
+    validation_set = minute_level_set[training_num:training_num+validation_num]
+    testing_set = minute_level_set[training_num+validation_num:]
+
+    for dayLevelItem in os.scandir(rootDir): #recording time level
+        if dayLevelItem.is_dir():
+            # omit out of position detectionf or now
+            if 'OOP' not in dayLevelItem.name:
+                for carLevelItem in os.scandir(dayLevelItem.path):#car level
+                    if carLevelItem.is_dir() and ('ford2' in carLevelItem.path):
+                        for minuteLevelItem in os.scandir(carLevelItem.path):#minute level, e.g. v_Copy (12) - Copy__04-11-2019 15-23-54
+                            if minuteLevelItem.is_dir() and minuteLevelItem.path in testing_set:
+                                with open(os.path.join(minuteLevelItem.path, "test_data.json")) as labelFile:
+                                    labels = json.load(labelFile)
+                                    occupancyLabel = labels["Occupied_Seats"]
+                                    occupancyTypeLabel = labels["Occupant_Type"]
+                                    first_frame_path = os.path.join(minuteLevelItem.path, "rfImages", "001")
+                                    first_rfImage_struct = loadmat(first_frame_path)['rfImageStruct']
+                                    first_frame = getPreprocessedRFImage(first_rfImage_struct['image_DxDyR'], first_rfImage_struct['mask'])
+                                    for file in os.scandir(os.path.join(minuteLevelItem.path, "rfImages")):
+                                        if file.name.endswith('.mat'):
+                                            try:
+                                                rfImageStruct = loadmat(file.path)['rfImageStruct']
+                                                imagePower = getPreprocessedRFImage(rfImageStruct['image_DxDyR'], rfImageStruct['mask'])
+                                                if remove_clutter == True:
+                                                    if '001' in file.name:
+                                                        continue
+                                                    else:
+                                                        imagePower = np.subtract(imagePower, first_frame)
+                                                data["path_original"].append(file.path)
+                                                data["processed_filename"].append(index)
+                                                data["label"].append(makeOccupancyLabelsWithType(occupancyLabel, occupancyTypeLabel))
+                                                # Store processed files into a separate folder. E.g. '/home/vayyar_data/processed_vCab_Recordings_clutter_removed/...' 
+                                                processed_csv = '/home/vayyar_data/processed_vCab_Recordings_ford2_testing/%s.npy' % (str(index))
+                                                np.save(processed_csv, imagePower)
+                                                index += 1
+                                            except Exception as ex:
+                                                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                                                message = template.format(type(ex).__name__, ex.args)
+                                                print(message)
+                                                print(file.path)
+    # Create a pandas dataframe out from this dictionary. "path" will be the first column, "label" will be the second column.
+    # Each row will contain info for a sample
+    # Store the index dataframe into a pickle fle. E.g. '/home/vayyar_data/processed_vCab_Recordings_clutter_removed/path_label.pickle'
+    df = pd.DataFrame.from_dict(data) 
+    df.to_pickle('/home/vayyar_data/processed_vCab_Recordings_ford2_testing/path_label.pickle')
+
 def makeFirstBatchPickleFile():
     """
     One-time function calling function, can be called using python interpreter or jupyter notebook
