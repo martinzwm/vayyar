@@ -176,7 +176,7 @@ def train():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     # CNN model training
-    num_epochs = 2
+    num_epochs = 100
     loss_list, val_loss_list, val_acc_list = [], [], []
     iteration_count = 0
     train_per_epoch = math.ceil(len(train_dataset) / batch_size)
