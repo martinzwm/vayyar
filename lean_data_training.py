@@ -239,6 +239,15 @@ def train():
     np.save(train_loss_profile, np.array(loss_list))
     np.save('val_loss_profile.npy', np.array(val_loss_list))
 
+    train_loss_profile = {
+        'train_loss': np.array(loss_list),
+        'val_loss': np.array(val_loss_list),
+        'val_acc': np.array(val_acc_list)
+    }
+    df = pd.DataFrame.from_dict(train_loss_profile)
+    # path_label = os.path.join(output_dir, car_name) + '\path_label.pickle'
+    df.to_pickle('train_loss_profile.pickle')
+
 def test():
     test_dataset = TrainDataSet([
         # r'B:\Vayyar_Dataset\small_data\for_martin_vcab\ford2_center'
