@@ -176,7 +176,7 @@ def train():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     # CNN model training
-    num_epochs = 1
+    num_epochs = 2
     loss_list, val_loss_list, val_acc_list = [], [], []
     iteration_count = 0
     train_per_epoch = math.ceil(len(train_dataset) / batch_size)
@@ -205,6 +205,8 @@ def train():
             optimizer.step()
             sum_loss += loss.data
             iteration_count += 1
+        if device == torch.device('cuda'):
+            sum_loss = sum_loss.cpu()
         loss_list.append(sum_loss/train_per_epoch)
         with torch.no_grad():
             for val_batch in val_loader:
@@ -224,6 +226,8 @@ def train():
 
         if len(val_loss_list) == 0 or sum_val_loss/val_per_epoch < min(val_loss_list):
             torch.save(model, 'lean_cnn.pt')
+        if device == torch.device('cuda'):
+            sum_val_loss = sum_val_loss.cpu()
         val_loss_list.append(sum_val_loss/val_per_epoch)
         val_acc_list.append(sum_val_acc/val_per_epoch)
         print('done validation')
@@ -235,17 +239,12 @@ def train():
     print(f'duration = {end - start}s')
 
     # Save train loss and val loss profile
-    train_loss_profile = 'train_loss_profile.npy'
-    np.save(train_loss_profile, np.array(loss_list))
-    np.save('val_loss_profile.npy', np.array(val_loss_list))
-
     train_loss_profile = {
         'train_loss': np.array(loss_list),
         'val_loss': np.array(val_loss_list),
         'val_acc': np.array(val_acc_list)
     }
     df = pd.DataFrame.from_dict(train_loss_profile)
-    # path_label = os.path.join(output_dir, car_name) + '\path_label.pickle'
     df.to_pickle('train_loss_profile.pickle')
 
 def test():
@@ -284,6 +283,8 @@ def test():
     
 if __name__ == '__main__':
     train()
+    profile = pd.read_pickle('train_loss_profile.pickle')
+    print(profile)
             
 
 
