@@ -28,16 +28,16 @@ class CNNModelRC(nn.Module):
         super(CNNModelRC, self).__init__()
         self.conv_layer1 = self._conv_layer_set(1, 32)
         self.conv_layer2 = self._conv_layer_set(32, 64)
-        self.fc1 = nn.Linear(6400, 128)
+        self.fc1 = nn.Linear(64*7*7*6, 128)
         self.fc2 = nn.Linear(128, num_classes)
         self.relu = nn.LeakyReLU()
-        self.batch=nn.BatchNorm1d(128)
+        # self.batch=nn.BatchNorm1d(128)
         self.drop=nn.Dropout(p=0.15) 
-        self.sigmoid = nn.Sigmoid()               
+        self.softmax=nn.LogSoftmax(dim=1)        
         
     def _conv_layer_set(self, in_c, out_c):
         conv_layer = nn.Sequential(
-        nn.Conv3d(in_c, out_c, kernel_size=(3, 3, 3), padding=0),
+        nn.Conv3d(in_c, out_c, kernel_size=(3, 3, 3), padding=(1,1,1)),
         nn.LeakyReLU(),
         nn.MaxPool3d((2, 2, 2)),
         )
@@ -51,10 +51,10 @@ class CNNModelRC(nn.Module):
         out = out.view(out.size(0), -1) #Flatten it out
         out = self.fc1(out)
         out = self.relu(out)
-        out = self.batch(out)
+        # out = self.batch(out)
         out = self.drop(out)
         out = self.fc2(out)
-        out = self.sigmoid(out)
+        out = self.softmax(out)
         return out
 
 class CNNModel(nn.Module):

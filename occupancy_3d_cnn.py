@@ -21,7 +21,7 @@ from utilities import importDataFromMatFiles, loadData, scenarioWiseTransformLab
 from models import CNNModel, CNNModelRC
 from torchvision import transforms
 from data_prep import rfImageDataSet, cropR
-import pkbar
+#import pkbar
 import math
 from torch.utils.tensorboard import SummaryWriter
 import argparse
