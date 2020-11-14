@@ -99,7 +99,7 @@ class CNNModelRC(nn.Module):
         self.fc2 = nn.Linear(128, num_classes)
         self.relu = nn.LeakyReLU()
         # self.batch=nn.BatchNorm1d(128)
-        self.drop=nn.Dropout(p=0.15) 
+        self.drop=nn.Dropout(p=0.50) 
         self.softmax=nn.LogSoftmax(dim=1)        
         
     def _conv_layer_set(self, in_c, out_c):
