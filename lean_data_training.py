@@ -7,7 +7,7 @@ import torch
 import json
 import copy
 from utilities import loadmat
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 
 import time
 import matplotlib.pyplot as plt
@@ -17,18 +17,14 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 
 import torch
-from torch.utils.data import Dataset, DataLoader, random_split
 from torch.autograd import Variable
 import torch.nn as nn
 from torch.optim import *
 from utilities import importDataFromMatFiles, loadData, scenarioWiseTransformLabels, getConfusionMatrices, seatWiseTransformLabels, plot_seat_wise_bar, multiclass_metric
 # from torchvision import transforms
 from data_prep import rfImageDataSet, cropR
-#import pkbar
 import math
 from torch.utils.tensorboard import SummaryWriter
-# import argparse
-# import seaborn as sn
 
 class TrainDataSet(Dataset):
     # Allows user to create a dataset with multiple directories
@@ -151,13 +147,32 @@ def train():
         batch_size = 256
     else:
         batch_size = 64
+    
+    # To balance the train_dataset
+    label_list = []
+    for i in range(len(train_dataset)):
+        label_list.append(train_dataset[i]['label'][0])
+    label_list = np.array(label_list)
+
+    class_distribution = train_dataset.class_distribution()
+    class_weight = 1.0 / (class_distribution + 1e-5)
+    
+    label_weight = class_weight[label_list]
+
+    weighted_sampler = WeightedRandomSampler(
+        weights=label_weight,
+        num_samples=len(label_weight),
+        replacement=True
+    )
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         num_workers=1,
-        shuffle=True
+        shuffle=False,
+        sampler=weighted_sampler
     )
+
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -176,17 +191,15 @@ def train():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     # CNN model training
-    num_epochs = 100
-    loss_list, val_loss_list, val_acc_list = [], [], []
+    num_epochs = 200
+    loss_list, val_loss_list, train_acc_list, val_acc_list = [], [], [], []
     iteration_count = 0
     train_per_epoch = math.ceil(len(train_dataset) / batch_size)
     val_per_epoch = math.ceil(len(val_dataset) / batch_size)
 
     start = time.time()
     for epoch in range(num_epochs):
-        sum_loss = 0
-        sum_val_loss = 0
-        sum_val_acc = 0
+        sum_loss, sum_val_loss, sum_train_acc, sum_val_acc = 0, 0, 0, 0
         for i, sample in enumerate(train_loader):
             model.train()
             x_train = sample["imagePower"].float().to(device)
@@ -204,10 +217,16 @@ def train():
             # Update parameters
             optimizer.step()
             sum_loss += loss.data
+            if device == torch.device('cuda'):
+                sum_train_acc += accuracy_score(outputs.detach().cpu().numpy().argmax(axis=1), y_train.detach().cpu().numpy())
+            else:
+                sum_train_acc += accuracy_score(outputs.numpy().argmax(axis=1), y_train.detach().numpy())
             iteration_count += 1
+
         if device == torch.device('cuda'):
             sum_loss = sum_loss.cpu()
         loss_list.append(sum_loss/train_per_epoch)
+        train_acc_list.append(sum_train_acc/train_per_epoch)
         with torch.no_grad():
             for val_batch in val_loader:
                 x_val = val_batch['imagePower'].float().to(device)
@@ -233,6 +252,7 @@ def train():
         print('done validation')
         print("Epoch {}, Loss: {}".format(epoch+1, sum_loss/train_per_epoch))
         print("Epoch {}, Val Loss: {}".format(epoch+1, sum_val_loss/val_per_epoch))
+        print("Epoch {}, Train Accuracy: {}".format(epoch+1, sum_train_acc/train_per_epoch))
         print("Epoch {}, Val Accuracy: {}".format(epoch+1, sum_val_acc/val_per_epoch))
 
     end = time.time()
@@ -242,6 +262,7 @@ def train():
     train_loss_profile = {
         'train_loss': np.array(loss_list),
         'val_loss': np.array(val_loss_list),
+        'train_acc': np.array(train_acc_list),
         'val_acc': np.array(val_acc_list)
     }
     df = pd.DataFrame.from_dict(train_loss_profile)
@@ -280,14 +301,9 @@ def test():
             accuracy = accuracy_score(y_test_pred.numpy().argmax(axis=1), y_test.detach().numpy())
         accuracy_list.append(accuracy)
     print(np.mean(accuracy_list))
-    
+
 if __name__ == '__main__':
     train()
-    profile = pd.read_pickle('train_loss_profile.pickle')
-    print(profile)
-            
-
-
 
 
 # train_dataset1 = rfImageDataSet(r'B:\Vayyar_Dataset\small_data\for_martin_vcab\ford1') # ford 1
