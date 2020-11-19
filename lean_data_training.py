@@ -148,29 +148,30 @@ def train():
     else:
         batch_size = 64
     
-    # To balance the train_dataset
-    label_list = []
-    for i in range(len(train_dataset)):
-        label_list.append(train_dataset[i]['label'][0])
-    label_list = np.array(label_list)
+    # # To balance the train_dataset
+    # label_list = []
+    # for i in range(len(train_dataset)):
+    #     label_list.append(train_dataset[i]['label'][0])
+    # label_list = np.array(label_list)
 
-    class_distribution = train_dataset.class_distribution()
-    class_weight = 1.0 / (class_distribution + 1e-5)
+    # class_distribution = train_dataset.class_distribution()
+    # class_weight = 1.0 / (class_distribution + 1e-5)
     
-    label_weight = class_weight[label_list]
+    # label_weight = class_weight[label_list]
 
-    weighted_sampler = WeightedRandomSampler(
-        weights=label_weight,
-        num_samples=len(label_weight),
-        replacement=True
-    )
+    # weighted_sampler = WeightedRandomSampler(
+    #     weights=label_weight,
+    #     num_samples=len(label_weight),
+    #     replacement=True
+    # )
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         num_workers=1,
-        shuffle=False,
-        sampler=weighted_sampler
+        shuffle=True
+        # shuffle=False,
+        # sampler=weighted_sampler
     )
 
     val_loader = DataLoader(
