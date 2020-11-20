@@ -358,7 +358,7 @@ def train():
     print(model)
 
     error = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     # CNN model training
     num_epochs = 200
