@@ -281,12 +281,12 @@ class CNNModelRC(nn.Module):
         return out
 
 def train():
-    # Normalization
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.7263228545248579],
-                                std=[3.6356451880572926])
-    ])
+    # # Normalization
+    # transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.7263228545248579],
+    #                             std=[3.6356451880572926])
+    # ])
 
     # # For local
     # train_dataset = TrainDataSet([
@@ -302,11 +302,11 @@ def train():
     train_dataset = TrainDataSet([
         '/data/for_martin_vcab/ford1',
         '/data/for_martin_vcab/ford2'
-    ], transform)
+    ])
 
     val_dataset = TrainDataSet([
         '/data/for_martin_vcab/ford1_center'
-    ], transform)
+    ])
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
